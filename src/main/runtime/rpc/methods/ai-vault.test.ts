@@ -303,6 +303,18 @@ describe('aiVault.probeSessionTranscript', () => {
     expect(
       AiVaultProbeSessionTranscriptParams.safeParse({ ...ok, filePath: '/etc/passwd' }).success
     ).toBe(false)
+    expect(
+      AiVaultProbeSessionTranscriptParams.safeParse({
+        ...ok,
+        filePath: '\\\\wsl.localhost\\Ubuntu\\etc\\shadow'
+      }).success
+    ).toBe(false)
+    expect(
+      AiVaultProbeSessionTranscriptParams.safeParse({
+        ...ok,
+        filePath: '\\\\wsl.localhost\\Ubuntu\\home\\ada\\..\\..\\etc\\x.jsonl'
+      }).success
+    ).toBe(false)
   })
 
   it('returns the host probe verdict for the named target', async () => {

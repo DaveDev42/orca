@@ -103,12 +103,20 @@ export const AiVaultSessionTitlesParams = z.object({
 })
 
 // Why: the only transcript a client may ask about is a host-local WSL UNC path, the one
-// case it cannot prove reachable from an SSH shell on its own.
+// case it cannot prove reachable from an SSH shell on its own. Limiting it to a `.jsonl`
+// file with no `..` segment keeps the probe from answering whether arbitrary files exist.
 export const AiVaultProbeSessionTranscriptParams = z.object({
   executionHostId: sshExecutionHostIdSchema,
   filePath: z
     .string()
     .min(1)
     .max(AI_VAULT_SCOPE_PATH_MAX_LENGTH)
-    .refine((value) => isWslUncPath(value), { message: 'Expected a WSL UNC transcript path' })
+    .refine((value) => isWslUncPath(value) && isProbeableTranscriptPath(value), {
+      message: 'Expected a WSL UNC transcript path'
+    })
 })
+
+function isProbeableTranscriptPath(value: string): boolean {
+  const segments = value.split(/[\\/]+/)
+  return /\.jsonl$/i.test(value) && !segments.includes('..')
+}
