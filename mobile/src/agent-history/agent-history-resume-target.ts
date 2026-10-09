@@ -10,6 +10,7 @@ import { isPathInsideOrEqual } from '../../../src/shared/cross-platform-path'
 import type { Worktree } from '../worktree/workspace-list-types'
 import {
   getMobileAiVaultResumeTargetBlockReason,
+  isMobileAiVaultWslFallbackResume,
   mobileAiVaultResumeTargetBlockMessage,
   type MobileAiVaultResumeBlockReason
 } from './agent-history-resume-block-reason'
@@ -55,6 +56,8 @@ export type MobileAiVaultSessionResumeTarget =
       targetStatus: 'local' | 'ssh'
       workspacePath: string | null
       terminalPlatform: NodeJS.Platform | null
+      // SSH only: the host to verify the transcript on when the WSL-UNC guess alone allowed it.
+      transcriptProbeHostId?: `ssh:${string}`
     }
   | { status: 'blocked'; message: string }
 
@@ -151,12 +154,17 @@ export function resolveMobileAiVaultSessionResumeTarget(args: {
     const worktree = args.worktrees.find(
       (candidate) => candidate.worktreeId === candidateWorktreeId
     )
+    const parsedHost = parseExecutionHostId(target.hostId)
+    const probeHostId = parsedHost?.kind === 'ssh' ? parsedHost.id : null
     return {
       status: 'ready',
       worktreeId: candidateWorktreeId,
       targetStatus: target.status,
       workspacePath: worktree?.path ?? null,
-      terminalPlatform: worktree?.terminalPlatform ?? null
+      terminalPlatform: worktree?.terminalPlatform ?? null,
+      ...(probeHostId && isMobileAiVaultWslFallbackResume({ session: args.session, target })
+        ? { transcriptProbeHostId: probeHostId }
+        : {})
     }
   }
 

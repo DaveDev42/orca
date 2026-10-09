@@ -17,6 +17,8 @@ import {
   resumeAiVaultSessionInTerminal
 } from '../session/ai-vault-resume-launch'
 import { prepareMobileAiVaultSessionResume } from '../session/ai-vault-resume-preparation'
+import { probeMobileAiVaultTranscriptOnSshHost } from '../session/ai-vault-resume-transcript-probe'
+import { mobileAiVaultResumeTargetBlockMessage } from './agent-history-resume-block-reason'
 import { triggerError, triggerSuccess } from '../platform/haptics'
 import type { AiVaultScope, AiVaultSession } from '../../../src/shared/ai-vault-types'
 import type { Worktree } from '../worktree/workspace-list-types'
@@ -205,6 +207,21 @@ export function MobileAgentSessionHistoryPanel({
           setResumeMessage('Unable to determine host platform.')
           triggerError()
           return
+        }
+
+        if (target.transcriptProbeHostId) {
+          const probe = await probeMobileAiVaultTranscriptOnSshHost({
+            client,
+            session,
+            targetHostId: target.transcriptProbeHostId,
+            hostCapabilities: resumeHost.capabilities
+          })
+          assertCurrentOwner()
+          if (probe === 'missing') {
+            setResumeMessage(mobileAiVaultResumeTargetBlockMessage('ssh', 'ssh-transcript-missing'))
+            triggerError()
+            return
+          }
         }
 
         const preparedSession = await prepareMobileAiVaultSessionResume(client, session)

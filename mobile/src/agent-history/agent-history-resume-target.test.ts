@@ -230,6 +230,16 @@ describe('mobile AI Vault resume target guards', () => {
       })
       expect(target.status).toBe('ready')
       expect(target.status === 'ready' ? target.targetStatus : '').toBe('ssh')
+      // The WSL guess is the only proof here, so the caller must verify it on the SSH host.
+      expect(target.status === 'ready' ? target.transcriptProbeHostId : '').toBe('ssh:builder')
+    })
+
+    it('does not ask for a transcript probe when the row was scanned on the SSH host', () => {
+      const target = resolve({
+        executionHostId: 'ssh:builder',
+        filePath: '\\\\wsl.localhost\\Ubuntu\\home\\ada\\.claude\\projects\\p\\s.jsonl'
+      })
+      expect(target.status === 'ready' ? target.transcriptProbeHostId : 'blocked').toBeUndefined()
     })
 
     it('blocks a host-local session on an SSH workspace', () => {

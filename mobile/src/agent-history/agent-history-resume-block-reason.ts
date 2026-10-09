@@ -10,7 +10,11 @@ import type {
   MobileAiVaultResumeWorkspaceTarget
 } from './agent-history-resume-target'
 
-export type MobileAiVaultResumeBlockReason = 'ssh-host-local' | 'ssh-other-host' | 'status'
+export type MobileAiVaultResumeBlockReason =
+  | 'ssh-host-local'
+  | 'ssh-other-host'
+  | 'ssh-transcript-missing'
+  | 'status'
 
 export function getMobileAiVaultResumeTargetBlockReason(args: {
   session: Pick<AiVaultSession, 'executionHostId' | 'filePath'>
@@ -43,12 +47,30 @@ export function getMobileAiVaultResumeTargetBlockReason(args: {
   return isWslUncPath(session.filePath) ? null : 'ssh-host-local'
 }
 
+/**
+ * True when an SSH resume is allowed only by the WSL-UNC guess, i.e. nothing proves the SSH host
+ * holds the transcript. Same-host rows are proven by the scan that produced them.
+ */
+export function isMobileAiVaultWslFallbackResume(args: {
+  session: Pick<AiVaultSession, 'executionHostId' | 'filePath'>
+  target: MobileAiVaultResumeWorkspaceTarget
+}): boolean {
+  if (args.target.status !== 'ssh' || !isWslUncPath(args.session.filePath)) {
+    return false
+  }
+  const sessionHostId = normalizeExecutionHostId(args.session.executionHostId)
+  return !sessionHostId || sessionHostId === LOCAL_EXECUTION_HOST_ID
+}
+
 export function mobileAiVaultResumeTargetBlockMessage(
   status: MobileAiVaultResumeTargetStatus,
   reason: MobileAiVaultResumeBlockReason | null
 ): string {
   if (status === 'runtime') {
     return 'Resume from history is not available in runtime-hosted workspaces.'
+  }
+  if (reason === 'ssh-transcript-missing') {
+    return 'This session was not found on the SSH host of this workspace, so it cannot be resumed here.'
   }
   if (reason === 'ssh-other-host') {
     return 'This session is stored on a different SSH host than this workspace, so it cannot be resumed here.'
