@@ -186,6 +186,90 @@ describe('mobile AI Vault resume target guards', () => {
     expect(target.status === 'blocked' ? target.message : '').toContain('SSH workspace')
   })
 
+  describe('SSH workspaces', () => {
+    const sshRepos = [
+      ...repos,
+      { id: 'other-ssh-repo', path: '/home/ada/other', connectionId: 'other-builder' }
+    ]
+    const sshWorktree = worktree({
+      worktreeId: 'ssh-wt',
+      repoId: 'ssh-repo',
+      path: '/home/ada/ssh-repo/feature'
+    })
+    const resolve = (sessionOverrides: Partial<AiVaultSession>, worktrees = [sshWorktree]) =>
+      resolveMobileAiVaultSessionResumeTarget({
+        session: session({ cwd: '/home/ada/ssh-repo/feature/src', ...sessionOverrides }),
+        activeWorktreeId: 'ssh-wt',
+        worktrees,
+        repos: sshRepos
+      })
+
+    it('resumes a session stored on the same SSH host', () => {
+      expect(
+        resolve({ executionHostId: 'ssh:builder', filePath: '/home/ada/.claude/session.jsonl' })
+      ).toEqual({
+        status: 'ready',
+        worktreeId: 'ssh-wt',
+        targetStatus: 'ssh',
+        workspacePath: '/home/ada/ssh-repo/feature',
+        terminalPlatform: null
+      })
+    })
+
+    it('matches the worktree host id before the repo connection', () => {
+      const target = resolve({ executionHostId: 'ssh:builder' }, [
+        { ...sshWorktree, hostId: 'ssh:builder' }
+      ])
+      expect(target.status).toBe('ready')
+    })
+
+    it('resumes a WSL-stored session into an SSH workspace (SSH-to-local-WSL)', () => {
+      const target = resolve({
+        executionHostId: 'local',
+        filePath: '\\\\wsl.localhost\\Ubuntu\\home\\ada\\.claude\\projects\\p\\s.jsonl'
+      })
+      expect(target.status).toBe('ready')
+      expect(target.status === 'ready' ? target.targetStatus : '').toBe('ssh')
+    })
+
+    it('blocks a host-local session on an SSH workspace', () => {
+      const target = resolve({ executionHostId: 'local' })
+      expect(target.status).toBe('blocked')
+      expect(target.status === 'blocked' ? target.message : '').toContain('SSH workspace')
+    })
+
+    it('blocks a session stored on a different SSH host', () => {
+      const target = resolve({
+        executionHostId: 'ssh:other-builder',
+        filePath: '/home/ada/.claude/session.jsonl'
+      })
+      expect(target.status).toBe('blocked')
+      expect(target.status === 'blocked' ? target.message : '').toContain('different SSH host')
+    })
+
+    it('blocks Antigravity IDE history on an SSH workspace even from the same host', () => {
+      const target = resolve({
+        executionHostId: 'ssh:builder',
+        agent: 'antigravity',
+        filePath: '/home/ada/.gemini/antigravity-ide/brain/abc/transcript.jsonl'
+      })
+      expect(target.status).toBe('blocked')
+    })
+
+    it('keeps runtime targets blocked even when the session host matches', () => {
+      const target = resolveMobileAiVaultSessionResumeTarget({
+        session: session({ cwd: '/workspace/runtime/app', executionHostId: 'runtime:devbox' }),
+        activeWorktreeId: 'runtime-wt',
+        worktrees: [
+          worktree({ worktreeId: 'runtime-wt', repoId: 'runtime-repo', path: '/workspace/runtime' })
+        ],
+        repos
+      })
+      expect(target.status).toBe('blocked')
+      expect(target.status === 'blocked' ? target.message : '').toContain('runtime-hosted')
+    })
+  })
+
   it('blocks folder workspaces whose candidate repos include a runtime owner', () => {
     const target = resolveMobileAiVaultSessionResumeTarget({
       session: session({ cwd: '/workspace/folder/src' }),

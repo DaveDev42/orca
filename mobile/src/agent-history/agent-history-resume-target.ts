@@ -9,6 +9,11 @@ import type { AiVaultSession } from '../../../src/shared/ai-vault-types'
 import { isPathInsideOrEqual } from '../../../src/shared/cross-platform-path'
 import type { Worktree } from '../worktree/workspace-list-types'
 import {
+  getMobileAiVaultResumeTargetBlockReason,
+  mobileAiVaultResumeTargetBlockMessage,
+  type MobileAiVaultResumeBlockReason
+} from './agent-history-resume-block-reason'
+import {
   canResumeInMobileSessionWorktree,
   resolveMobileAgentHistorySessionWorktree
 } from './agent-history-session-worktree'
@@ -47,37 +52,47 @@ export type MobileAiVaultSessionResumeTarget =
   | {
       status: 'ready'
       worktreeId: string
-      targetStatus: 'local'
+      targetStatus: 'local' | 'ssh'
       workspacePath: string | null
       terminalPlatform: NodeJS.Platform | null
     }
   | { status: 'blocked'; message: string }
 
-function getMobileAiVaultResumeRepoTargetStatus(
-  repo: MobileAiVaultResumeRepo | null | undefined
-): MobileAiVaultResumeTargetStatus {
-  if (!repo) {
-    return 'unknown'
-  }
-  return getMobileAiVaultResumeExecutionHostTargetStatus(getRepoExecutionHostId(repo))
+export type MobileAiVaultResumeWorkspaceTarget = {
+  status: MobileAiVaultResumeTargetStatus
+  hostId: ExecutionHostId | null
 }
 
-function getMobileAiVaultResumeWorktreeTargetStatus(args: {
+const UNKNOWN_RESUME_WORKSPACE_TARGET: MobileAiVaultResumeWorkspaceTarget = {
+  status: 'unknown',
+  hostId: null
+}
+
+function resumeWorkspaceTargetForHost(
+  hostId: ExecutionHostId | null | undefined
+): MobileAiVaultResumeWorkspaceTarget {
+  const status = getMobileAiVaultResumeExecutionHostTargetStatus(hostId)
+  return status === 'unknown'
+    ? UNKNOWN_RESUME_WORKSPACE_TARGET
+    : { status, hostId: normalizeExecutionHostId(hostId) }
+}
+
+function getMobileAiVaultResumeWorktreeTarget(args: {
   worktreeId: string | null
   worktrees: readonly MobileAiVaultResumeWorktree[]
   repos: readonly MobileAiVaultResumeRepo[]
   folderWorkspaces?: readonly MobileAiVaultResumeFolderWorkspace[]
   projectGroups?: readonly MobileAiVaultResumeProjectGroup[]
-}): MobileAiVaultResumeTargetStatus {
+}): MobileAiVaultResumeWorkspaceTarget {
   if (!args.worktreeId) {
-    return 'unknown'
+    return UNKNOWN_RESUME_WORKSPACE_TARGET
   }
   const worktree = args.worktrees.find((candidate) => candidate.worktreeId === args.worktreeId)
   if (!worktree) {
-    return 'unknown'
+    return UNKNOWN_RESUME_WORKSPACE_TARGET
   }
   if (worktree.workspaceKind === 'folder-workspace') {
-    return getMobileAiVaultResumeFolderTargetStatus({
+    return getMobileAiVaultResumeFolderTarget({
       worktreeId: args.worktreeId,
       worktree,
       repos: args.repos,
@@ -85,31 +100,12 @@ function getMobileAiVaultResumeWorktreeTargetStatus(args: {
       projectGroups: args.projectGroups ?? []
     })
   }
-  const worktreeHost = getMobileAiVaultResumeExecutionHostTargetStatus(worktree.hostId)
-  if (worktreeHost !== 'unknown') {
-    return worktreeHost
+  const worktreeTarget = resumeWorkspaceTargetForHost(worktree.hostId)
+  if (worktreeTarget.status !== 'unknown') {
+    return worktreeTarget
   }
-  return getMobileAiVaultResumeRepoTargetStatus(
-    args.repos.find((candidate) => candidate.id === worktree.repoId)
-  )
-}
-
-function isSupportedMobileAiVaultResumeTargetStatus(
-  status: MobileAiVaultResumeTargetStatus
-): status is 'local' {
-  // Why: mobile sessions come from the host-local transcript scan, so an SSH
-  // workspace cannot see the transcript file (mirror of desktop #6270).
-  return status === 'local'
-}
-
-function mobileAiVaultResumeTargetBlockMessage(status: MobileAiVaultResumeTargetStatus): string {
-  if (status === 'runtime') {
-    return 'Resume from history is not available in runtime-hosted workspaces.'
-  }
-  if (status === 'ssh') {
-    return 'This session is stored on the host machine, so it cannot be resumed in an SSH workspace. Open a local workspace for this project.'
-  }
-  return 'Open a local workspace before resuming a session.'
+  const repo = args.repos.find((candidate) => candidate.id === worktree.repoId)
+  return repo ? resumeWorkspaceTargetForHost(getRepoExecutionHostId(repo)) : worktreeTarget
 }
 
 export function resolveMobileAiVaultSessionResumeTarget(args: {
@@ -135,47 +131,60 @@ export function resolveMobileAiVaultSessionResumeTarget(args: {
       : null
   ].filter((candidate): candidate is string => Boolean(candidate))
 
+  let firstBlocked: {
+    target: MobileAiVaultResumeWorkspaceTarget
+    reason: MobileAiVaultResumeBlockReason | null
+  } | null = null
   for (const candidateWorktreeId of candidateWorktreeIds) {
-    const targetStatus = getMobileAiVaultResumeWorktreeTargetStatus({
+    const target = getMobileAiVaultResumeWorktreeTarget({
       worktreeId: candidateWorktreeId,
       worktrees: args.worktrees,
       repos: args.repos,
       folderWorkspaces: args.folderWorkspaces,
       projectGroups: args.projectGroups
     })
-    if (!isSupportedMobileAiVaultResumeTargetStatus(targetStatus)) {
+    const reason = getMobileAiVaultResumeTargetBlockReason({ session: args.session, target })
+    if (reason || (target.status !== 'local' && target.status !== 'ssh')) {
+      firstBlocked ??= { target, reason }
       continue
     }
+    const worktree = args.worktrees.find(
+      (candidate) => candidate.worktreeId === candidateWorktreeId
+    )
     return {
       status: 'ready',
       worktreeId: candidateWorktreeId,
-      targetStatus,
-      workspacePath:
-        args.worktrees.find((worktree) => worktree.worktreeId === candidateWorktreeId)?.path ??
-        null,
-      terminalPlatform:
-        args.worktrees.find((worktree) => worktree.worktreeId === candidateWorktreeId)
-          ?.terminalPlatform ?? null
+      targetStatus: target.status,
+      workspacePath: worktree?.path ?? null,
+      terminalPlatform: worktree?.terminalPlatform ?? null
     }
   }
 
-  const blockedStatus = getMobileAiVaultResumeWorktreeTargetStatus({
-    worktreeId: candidateWorktreeIds[0] ?? args.activeWorktreeId,
-    worktrees: args.worktrees,
-    repos: args.repos,
-    folderWorkspaces: args.folderWorkspaces,
-    projectGroups: args.projectGroups
-  })
-  return { status: 'blocked', message: mobileAiVaultResumeTargetBlockMessage(blockedStatus) }
+  const blocked =
+    firstBlocked ??
+    ({
+      target: getMobileAiVaultResumeWorktreeTarget({
+        worktreeId: args.activeWorktreeId,
+        worktrees: args.worktrees,
+        repos: args.repos,
+        folderWorkspaces: args.folderWorkspaces,
+        projectGroups: args.projectGroups
+      }),
+      reason: null
+    } as const)
+  return {
+    status: 'blocked',
+    message: mobileAiVaultResumeTargetBlockMessage(blocked.target.status, blocked.reason)
+  }
 }
 
-function getMobileAiVaultResumeFolderTargetStatus(args: {
+function getMobileAiVaultResumeFolderTarget(args: {
   worktreeId: string
   worktree: MobileAiVaultResumeWorktree
   repos: readonly MobileAiVaultResumeRepo[]
   folderWorkspaces: readonly MobileAiVaultResumeFolderWorkspace[]
   projectGroups: readonly MobileAiVaultResumeProjectGroup[]
-}): MobileAiVaultResumeTargetStatus {
+}): MobileAiVaultResumeWorkspaceTarget {
   const folderWorkspaceId = args.worktreeId.startsWith('folder:')
     ? args.worktreeId.slice('folder:'.length)
     : null
@@ -183,7 +192,7 @@ function getMobileAiVaultResumeFolderTargetStatus(args: {
     ? args.folderWorkspaces.find((workspace) => workspace.id === folderWorkspaceId)
     : null
   if (!folderWorkspace) {
-    return 'unknown'
+    return UNKNOWN_RESUME_WORKSPACE_TARGET
   }
   const projectGroupId =
     folderWorkspace.projectGroupId ?? parseFolderWorkspaceRepoId(args.worktree.repoId)
@@ -193,7 +202,7 @@ function getMobileAiVaultResumeFolderTargetStatus(args: {
 
   const groupHostId = normalizeExecutionHostId(projectGroup?.executionHostId)
   if (groupHostId) {
-    return getMobileAiVaultResumeExecutionHostTargetStatus(groupHostId)
+    return resumeWorkspaceTargetForHost(groupHostId)
   }
 
   const explicitConnectionId = (
@@ -202,12 +211,10 @@ function getMobileAiVaultResumeFolderTargetStatus(args: {
     ''
   ).trim()
   if (explicitConnectionId) {
-    return getMobileAiVaultResumeExecutionHostTargetStatus(
-      toSshExecutionHostId(explicitConnectionId)
-    )
+    return resumeWorkspaceTargetForHost(toSshExecutionHostId(explicitConnectionId))
   }
 
-  return mergeMobileAiVaultResumeExecutionHostTargetStatuses(
+  return mergeMobileAiVaultResumeExecutionHostTargets(
     getMobileFolderWorkspaceCandidateRepos({
       folderWorkspace,
       projectGroupId,
@@ -287,16 +294,17 @@ function getMobileProjectGroupSubtreeIds(
   return ids
 }
 
-function mergeMobileAiVaultResumeExecutionHostTargetStatuses(
+function mergeMobileAiVaultResumeExecutionHostTargets(
   hostIds: readonly ExecutionHostId[]
-): MobileAiVaultResumeTargetStatus {
+): MobileAiVaultResumeWorkspaceTarget {
   if (hostIds.length === 0) {
-    return 'local'
+    return { status: 'local', hostId: null }
   }
   const statuses = hostIds.map(getMobileAiVaultResumeExecutionHostTargetStatus)
-  const uniqueStatuses = new Set(statuses)
-  if (uniqueStatuses.has('runtime')) {
-    return 'runtime'
+  if (statuses.includes('runtime')) {
+    return { status: 'runtime', hostId: null }
   }
-  return new Set(hostIds).size === 1 ? (statuses[0] ?? 'unknown') : 'unknown'
+  return new Set(hostIds).size === 1
+    ? resumeWorkspaceTargetForHost(hostIds[0])
+    : UNKNOWN_RESUME_WORKSPACE_TARGET
 }
