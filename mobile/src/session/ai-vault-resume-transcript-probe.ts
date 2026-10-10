@@ -38,3 +38,51 @@ export async function probeMobileAiVaultTranscriptOnSshHost(args: {
     return 'unverifiable'
   }
 }
+
+export type MobileTranscriptProbeSelection<T> =
+  | { kind: 'resume'; candidate: T }
+  | { kind: 'missing' }
+
+/**
+ * Picks which same-path workspace a WSL-fallback resume goes into. The first `present` wins; with
+ * none present, the first `unverifiable` candidate keeps the pre-probe behavior (proceed); only
+ * when every candidate is verified `missing` does the resume block.
+ *
+ * Why sequential: the common case is one or two candidates and a hit on the first stops the walk,
+ * so parallel probes would add SSH round trips through the serving host for no latency win. The
+ * caller caps the list (MAX_TRANSCRIPT_PROBE_CANDIDATES), which bounds the worst case. Candidates
+ * without a probe host are never blocked.
+ */
+export async function selectMobileAiVaultTranscriptProbeCandidate<
+  T extends { transcriptProbeHostId?: `ssh:${string}` }
+>(args: {
+  client: RpcOperationSender
+  session: Pick<AiVaultSession, 'filePath'>
+  candidates: readonly T[]
+  hostCapabilities: readonly string[] | undefined
+  assertCurrentOwner: () => void
+}): Promise<MobileTranscriptProbeSelection<T>> {
+  let firstUnverifiable: T | null = null
+  let sawMissing = false
+  for (const candidate of args.candidates) {
+    const result = await probeMobileAiVaultTranscriptOnSshHost({
+      client: args.client,
+      session: args.session,
+      targetHostId: candidate.transcriptProbeHostId ?? null,
+      hostCapabilities: args.hostCapabilities
+    })
+    args.assertCurrentOwner()
+    if (result === 'present') {
+      return { kind: 'resume', candidate }
+    }
+    if (result === 'missing') {
+      sawMissing = true
+    } else {
+      firstUnverifiable ??= candidate
+    }
+  }
+  if (firstUnverifiable) {
+    return { kind: 'resume', candidate: firstUnverifiable }
+  }
+  return sawMissing ? { kind: 'missing' } : { kind: 'resume', candidate: args.candidates[0] }
+}

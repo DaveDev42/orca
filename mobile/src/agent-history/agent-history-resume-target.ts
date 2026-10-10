@@ -1,12 +1,5 @@
-import {
-  getRepoExecutionHostId,
-  normalizeExecutionHostId,
-  parseExecutionHostId,
-  toSshExecutionHostId,
-  type ExecutionHostId
-} from '../../../src/shared/execution-host'
+import { parseExecutionHostId } from '../../../src/shared/execution-host'
 import type { AiVaultSession } from '../../../src/shared/ai-vault-types'
-import { isPathInsideOrEqual } from '../../../src/shared/cross-platform-path'
 import type { Worktree } from '../worktree/workspace-list-types'
 import {
   getMobileAiVaultResumeTargetBlockReason,
@@ -15,101 +8,48 @@ import {
   type MobileAiVaultResumeBlockReason
 } from './agent-history-resume-block-reason'
 import {
+  getMobileAiVaultResumeWorktreeTarget,
+  type MobileAiVaultResumeFolderWorkspace,
+  type MobileAiVaultResumeProjectGroup,
+  type MobileAiVaultResumeRepo,
+  type MobileAiVaultResumeWorkspaceTarget
+} from './agent-history-resume-workspace-target'
+export type {
+  MobileAiVaultResumeFolderWorkspace,
+  MobileAiVaultResumeProjectGroup,
+  MobileAiVaultResumeRepo,
+  MobileAiVaultResumeTargetStatus,
+  MobileAiVaultResumeWorkspaceTarget
+} from './agent-history-resume-workspace-target'
+import {
   canResumeInMobileSessionWorktree,
-  resolveMobileAgentHistorySessionWorktree
+  resolveMobileAgentHistorySessionWorktree,
+  resolveMobileAgentHistorySessionWorktreeTies
 } from './agent-history-session-worktree'
 
-export type MobileAiVaultResumeTargetStatus = 'local' | 'ssh' | 'runtime' | 'unknown'
-
-export type MobileAiVaultResumeRepo = {
-  id: string
-  path?: string | null
-  projectGroupId?: string | null
-  connectionId?: string | null
-  executionHostId?: ExecutionHostId | null
-}
-
-type MobileAiVaultResumeWorktree = Pick<Worktree, 'repoId' | 'worktreeId'> & {
-  path?: string | null
-  workspaceKind?: Worktree['workspaceKind']
-  hostId?: ExecutionHostId | null
-}
-
-export type MobileAiVaultResumeFolderWorkspace = {
-  id: string
-  projectGroupId: string
-  folderPath: string
-  connectionId?: string | null
-}
-
-export type MobileAiVaultResumeProjectGroup = {
-  id: string
-  parentGroupId?: string | null
-  connectionId?: string | null
-  executionHostId?: ExecutionHostId | string | null
+export type MobileAiVaultResumeReadyCandidate = {
+  worktreeId: string
+  targetStatus: 'local' | 'ssh'
+  workspacePath: string | null
+  terminalPlatform: NodeJS.Platform | null
+  // SSH only: the host to verify the transcript on when the WSL-UNC guess alone allowed it.
+  transcriptProbeHostId?: `ssh:${string}`
 }
 
 export type MobileAiVaultSessionResumeTarget =
-  | {
+  | (MobileAiVaultResumeReadyCandidate & {
       status: 'ready'
-      worktreeId: string
-      targetStatus: 'local' | 'ssh'
-      workspacePath: string | null
-      terminalPlatform: NodeJS.Platform | null
-      // SSH only: the host to verify the transcript on when the WSL-UNC guess alone allowed it.
-      transcriptProbeHostId?: `ssh:${string}`
-    }
+      // WSL fallback only: set when same-path workspaces on other SSH hosts tie with this one.
+      // Ordered, first entry is this target, one entry per host, capped at
+      // MAX_TRANSCRIPT_PROBE_CANDIDATES. The caller probes them and resumes into the first one
+      // that holds the transcript.
+      transcriptProbeCandidates?: MobileAiVaultResumeReadyCandidate[]
+    })
   | { status: 'blocked'; message: string }
 
-export type MobileAiVaultResumeWorkspaceTarget = {
-  status: MobileAiVaultResumeTargetStatus
-  hostId: ExecutionHostId | null
-}
-
-const UNKNOWN_RESUME_WORKSPACE_TARGET: MobileAiVaultResumeWorkspaceTarget = {
-  status: 'unknown',
-  hostId: null
-}
-
-function resumeWorkspaceTargetForHost(
-  hostId: ExecutionHostId | null | undefined
-): MobileAiVaultResumeWorkspaceTarget {
-  const status = getMobileAiVaultResumeExecutionHostTargetStatus(hostId)
-  return status === 'unknown'
-    ? UNKNOWN_RESUME_WORKSPACE_TARGET
-    : { status, hostId: normalizeExecutionHostId(hostId) }
-}
-
-function getMobileAiVaultResumeWorktreeTarget(args: {
-  worktreeId: string | null
-  worktrees: readonly MobileAiVaultResumeWorktree[]
-  repos: readonly MobileAiVaultResumeRepo[]
-  folderWorkspaces?: readonly MobileAiVaultResumeFolderWorkspace[]
-  projectGroups?: readonly MobileAiVaultResumeProjectGroup[]
-}): MobileAiVaultResumeWorkspaceTarget {
-  if (!args.worktreeId) {
-    return UNKNOWN_RESUME_WORKSPACE_TARGET
-  }
-  const worktree = args.worktrees.find((candidate) => candidate.worktreeId === args.worktreeId)
-  if (!worktree) {
-    return UNKNOWN_RESUME_WORKSPACE_TARGET
-  }
-  if (worktree.workspaceKind === 'folder-workspace') {
-    return getMobileAiVaultResumeFolderTarget({
-      worktreeId: args.worktreeId,
-      worktree,
-      repos: args.repos,
-      folderWorkspaces: args.folderWorkspaces ?? [],
-      projectGroups: args.projectGroups ?? []
-    })
-  }
-  const worktreeTarget = resumeWorkspaceTargetForHost(worktree.hostId)
-  if (worktreeTarget.status !== 'unknown') {
-    return worktreeTarget
-  }
-  const repo = args.repos.find((candidate) => candidate.id === worktree.repoId)
-  return repo ? resumeWorkspaceTargetForHost(getRepoExecutionHostId(repo)) : worktreeTarget
-}
+// Why: each probe is an RPC through the serving host to an SSH host; a handful of same-path
+// workspaces is realistic, an unbounded fan-out is not.
+export const MAX_TRANSCRIPT_PROBE_CANDIDATES = 4
 
 export function resolveMobileAiVaultSessionResumeTarget(args: {
   session: AiVaultSession
@@ -151,20 +91,15 @@ export function resolveMobileAiVaultSessionResumeTarget(args: {
       firstBlocked ??= { target, reason }
       continue
     }
-    const worktree = args.worktrees.find(
-      (candidate) => candidate.worktreeId === candidateWorktreeId
-    )
-    const parsedHost = parseExecutionHostId(target.hostId)
-    const probeHostId = parsedHost?.kind === 'ssh' ? parsedHost.id : null
+    const ready = buildReadyCandidate({ ...args, worktreeId: candidateWorktreeId, target })
+    const tied =
+      ready.transcriptProbeHostId && candidateWorktreeId === sessionWorktreeId
+        ? collectTiedProbeCandidates({ ...args, first: ready })
+        : []
     return {
       status: 'ready',
-      worktreeId: candidateWorktreeId,
-      targetStatus: target.status,
-      workspacePath: worktree?.path ?? null,
-      terminalPlatform: worktree?.terminalPlatform ?? null,
-      ...(probeHostId && isMobileAiVaultWslFallbackResume({ session: args.session, target })
-        ? { transcriptProbeHostId: probeHostId }
-        : {})
+      ...ready,
+      ...(tied.length > 1 ? { transcriptProbeCandidates: tied } : {})
     }
   }
 
@@ -186,133 +121,62 @@ export function resolveMobileAiVaultSessionResumeTarget(args: {
   }
 }
 
-function getMobileAiVaultResumeFolderTarget(args: {
+function buildReadyCandidate(args: {
+  session: AiVaultSession
+  worktrees: readonly Worktree[]
   worktreeId: string
-  worktree: MobileAiVaultResumeWorktree
+  target: MobileAiVaultResumeWorkspaceTarget
+}): MobileAiVaultResumeReadyCandidate {
+  const worktree = args.worktrees.find((candidate) => candidate.worktreeId === args.worktreeId)
+  const parsedHost = parseExecutionHostId(args.target.hostId)
+  const probeHostId = parsedHost?.kind === 'ssh' ? parsedHost.id : null
+  return {
+    worktreeId: args.worktreeId,
+    targetStatus: args.target.status === 'ssh' ? 'ssh' : 'local',
+    workspacePath: worktree?.path ?? null,
+    terminalPlatform: worktree?.terminalPlatform ?? null,
+    ...(probeHostId &&
+    isMobileAiVaultWslFallbackResume({ session: args.session, target: args.target })
+      ? { transcriptProbeHostId: probeHostId }
+      : {})
+  }
+}
+
+// Why: a WSL row is tagged local, so only the session cwd picks the workspace, and equal-length
+// cwd matches tie. Same-path checkouts on different SSH hosts would otherwise be picked by list
+// order, and a verified `missing` on the wrong host would refuse a resume the right host serves.
+// Non-tie cases return a single entry, which callers treat as "no extra candidates".
+function collectTiedProbeCandidates(args: {
+  session: AiVaultSession
+  worktrees: readonly Worktree[]
   repos: readonly MobileAiVaultResumeRepo[]
-  folderWorkspaces: readonly MobileAiVaultResumeFolderWorkspace[]
-  projectGroups: readonly MobileAiVaultResumeProjectGroup[]
-}): MobileAiVaultResumeWorkspaceTarget {
-  const folderWorkspaceId = args.worktreeId.startsWith('folder:')
-    ? args.worktreeId.slice('folder:'.length)
-    : null
-  const folderWorkspace = folderWorkspaceId
-    ? args.folderWorkspaces.find((workspace) => workspace.id === folderWorkspaceId)
-    : null
-  if (!folderWorkspace) {
-    return UNKNOWN_RESUME_WORKSPACE_TARGET
-  }
-  const projectGroupId =
-    folderWorkspace.projectGroupId ?? parseFolderWorkspaceRepoId(args.worktree.repoId)
-  const projectGroup = projectGroupId
-    ? args.projectGroups.find((group) => group.id === projectGroupId)
-    : null
-
-  const groupHostId = normalizeExecutionHostId(projectGroup?.executionHostId)
-  if (groupHostId) {
-    return resumeWorkspaceTargetForHost(groupHostId)
-  }
-
-  const explicitConnectionId = (
-    folderWorkspace?.connectionId ??
-    projectGroup?.connectionId ??
-    ''
-  ).trim()
-  if (explicitConnectionId) {
-    return resumeWorkspaceTargetForHost(toSshExecutionHostId(explicitConnectionId))
-  }
-
-  return mergeMobileAiVaultResumeExecutionHostTargets(
-    getMobileFolderWorkspaceCandidateRepos({
-      folderWorkspace,
-      projectGroupId,
-      projectGroups: args.projectGroups,
-      repos: args.repos
-    }).map(getRepoExecutionHostId)
-  )
-}
-
-function getMobileAiVaultResumeExecutionHostTargetStatus(
-  hostId: ExecutionHostId | null | undefined
-): MobileAiVaultResumeTargetStatus {
-  const parsed = parseExecutionHostId(hostId)
-  if (!parsed) {
-    return 'unknown'
-  }
-  return parsed.kind
-}
-
-function parseFolderWorkspaceRepoId(repoId: string): string | null {
-  const prefix = 'folder-workspace:'
-  return repoId.startsWith(prefix) ? repoId.slice(prefix.length) || null : null
-}
-
-function getMobileFolderWorkspaceCandidateRepos(args: {
-  folderWorkspace: MobileAiVaultResumeFolderWorkspace | null | undefined
-  projectGroupId: string | null
-  projectGroups: readonly MobileAiVaultResumeProjectGroup[]
-  repos: readonly MobileAiVaultResumeRepo[]
-}): MobileAiVaultResumeRepo[] {
-  if (!args.folderWorkspace || !args.projectGroupId) {
-    return []
-  }
-  const folderWorkspace = args.folderWorkspace
-  const groupIds = getMobileProjectGroupSubtreeIds(args.projectGroups, args.projectGroupId)
-  const groupRepos = args.repos.filter(
-    (repo) => typeof repo.projectGroupId === 'string' && groupIds.has(repo.projectGroupId)
-  )
-  const pathRepos = args.repos.filter(
-    (repo) =>
-      !(typeof repo.projectGroupId === 'string' && groupIds.has(repo.projectGroupId)) &&
-      typeof repo.path === 'string' &&
-      repo.path.trim().length > 0 &&
-      isPathInsideOrEqual(folderWorkspace.folderPath, repo.path)
-  )
-  if (folderWorkspace.connectionId) {
-    return [
-      ...groupRepos,
-      ...pathRepos.filter((repo) => (repo.connectionId ?? null) === folderWorkspace.connectionId)
-    ]
-  }
-  if (groupRepos.length === 0) {
-    return pathRepos
-  }
-  const groupConnectionIds = new Set(groupRepos.map((repo) => repo.connectionId ?? null))
-  return [
-    ...groupRepos,
-    ...pathRepos.filter((repo) => groupConnectionIds.has(repo.connectionId ?? null))
-  ]
-}
-
-function getMobileProjectGroupSubtreeIds(
-  projectGroups: readonly MobileAiVaultResumeProjectGroup[],
-  projectGroupId: string
-): Set<string> {
-  const ids = new Set<string>([projectGroupId])
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const group of projectGroups) {
-      if (group.parentGroupId && ids.has(group.parentGroupId) && !ids.has(group.id)) {
-        ids.add(group.id)
-        changed = true
-      }
+  folderWorkspaces?: readonly MobileAiVaultResumeFolderWorkspace[]
+  projectGroups?: readonly MobileAiVaultResumeProjectGroup[]
+  first: MobileAiVaultResumeReadyCandidate
+}): MobileAiVaultResumeReadyCandidate[] {
+  const candidates = [args.first]
+  const seenHosts = new Set([args.first.transcriptProbeHostId])
+  const tiedIds = resolveMobileAgentHistorySessionWorktreeTies({
+    session: args.session,
+    worktrees: args.worktrees
+  })
+  for (const worktreeId of tiedIds) {
+    if (candidates.length >= MAX_TRANSCRIPT_PROBE_CANDIDATES) {
+      break
     }
+    if (worktreeId === args.first.worktreeId) {
+      continue
+    }
+    const target = getMobileAiVaultResumeWorktreeTarget({ ...args, worktreeId })
+    if (getMobileAiVaultResumeTargetBlockReason({ session: args.session, target })) {
+      continue
+    }
+    const candidate = buildReadyCandidate({ ...args, worktreeId, target })
+    if (!candidate.transcriptProbeHostId || seenHosts.has(candidate.transcriptProbeHostId)) {
+      continue
+    }
+    seenHosts.add(candidate.transcriptProbeHostId)
+    candidates.push(candidate)
   }
-  return ids
-}
-
-function mergeMobileAiVaultResumeExecutionHostTargets(
-  hostIds: readonly ExecutionHostId[]
-): MobileAiVaultResumeWorkspaceTarget {
-  if (hostIds.length === 0) {
-    return { status: 'local', hostId: null }
-  }
-  const statuses = hostIds.map(getMobileAiVaultResumeExecutionHostTargetStatus)
-  if (statuses.includes('runtime')) {
-    return { status: 'runtime', hostId: null }
-  }
-  return new Set(hostIds).size === 1
-    ? resumeWorkspaceTargetForHost(hostIds[0])
-    : UNKNOWN_RESUME_WORKSPACE_TARGET
+  return candidates
 }
