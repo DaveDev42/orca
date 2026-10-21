@@ -234,4 +234,55 @@ describe('browser local network access', () => {
     expect(await answer(renderer, request.requestId, 'yes')).toBe('rejected')
     expect(respond).not.toHaveBeenCalled()
   })
+
+  describe("permission query (Electron turns Chromium's own local network checks off)", () => {
+    it('asks on a query from an eligible page and reports the grant on the next one', async () => {
+      const renderer = mockRenderer(1)
+      showTabIn(renderer)
+      const guest = mockGuest()
+
+      expect(check(guest)).toBe(false)
+      const [request] = sentRequests(renderer)
+      expect(request).toMatchObject({ details: { origin: 'https://acme.okta.com' } })
+      // Repeated queries while the prompt is open share it.
+      expect(check(guest)).toBe(false)
+      expect(sentRequests(renderer)).toHaveLength(1)
+
+      await answer(renderer, request.requestId, true)
+      expect(check(guest)).toBe(true)
+    })
+
+    it('does not ask again after a decline until the user acts in the page', async () => {
+      const renderer = mockRenderer(1)
+      showTabIn(renderer)
+      const guest = mockGuest()
+      check(guest)
+      await answer(renderer, sentRequests(renderer)[0].requestId, null)
+
+      expect(check(guest)).toBe(false)
+      expect(sentRequests(renderer)).toHaveLength(1)
+    })
+
+    it('never asks for http pages, cross-origin frames or checks without a page', () => {
+      const renderer = mockRenderer(1)
+      showTabIn(renderer)
+
+      expect(check(mockGuest('http://acme.test/'))).toBe(false)
+      expect(
+        check(mockGuest('https://acme.test/'), {
+          requestingUrl: 'https://ads.test/frame',
+          embeddingOrigin: 'https://acme.test'
+        })
+      ).toBe(false)
+      expect(
+        checkBrowserLocalNetworkAccess({
+          partition: PARTITION,
+          webContents: null,
+          requestingOrigin: 'https://acme.test',
+          details: undefined
+        })
+      ).toBe(false)
+      expect(sentRequests(renderer)).toHaveLength(0)
+    })
+  })
 })

@@ -58,7 +58,14 @@ export function requestBrowserLocalNetworkAccess(args: {
   }
 }
 
-/** Answers `navigator.permissions.query`: true only for an origin the user already allowed. */
+/**
+ * Answers `navigator.permissions.query`: true only for an origin the user already allowed.
+ *
+ * Why this also asks: Electron turns off Chromium's Local Network Access checks (shell/browser/feature_list.cc),
+ * so a fetch to 127.0.0.1 never raises a permission request and pages such as Okta FastPass only read this
+ * answer. An eligible page without a grant gets the prompt now; the answer to this query stays denied,
+ * and the page sees the grant on its next query.
+ */
 export function checkBrowserLocalNetworkAccess(args: {
   partition: string
   webContents: Electron.WebContents | null
@@ -73,5 +80,19 @@ export function checkBrowserLocalNetworkAccess(args: {
     (webContents && !webContents.isDestroyed() ? webContents.getURL() : '') ||
     requesting
   const origin = eligibleLocalNetworkOrigin(requesting, topLevel)
-  return origin !== null && hasLocalNetworkGrant(args.partition, origin)
+  if (origin === null) {
+    return false
+  }
+  if (hasLocalNetworkGrant(args.partition, origin)) {
+    return true
+  }
+  if (webContents && !webContents.isDestroyed() && details?.embeddingOrigin === undefined) {
+    requestBrowserLocalNetworkAccess({
+      partition: args.partition,
+      requester: webContents,
+      requestingUrl: requesting,
+      respond: () => {}
+    })
+  }
+  return false
 }
