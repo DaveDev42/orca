@@ -11,6 +11,7 @@ import {
 } from '@/components/confirmation-dialog-context'
 import { externalAppPrompt } from './browser-external-app-prompt'
 import { httpAuthPrompt } from './browser-http-auth-prompt'
+import { localNetworkPrompt } from './browser-local-network-prompt'
 
 /** How the window asks one kind of page prompt. */
 export type BrowserPagePromptHandler<K extends BrowserPagePromptKind> = {
@@ -26,7 +27,8 @@ export type BrowserPagePromptHandler<K extends BrowserPagePromptKind> = {
 
 const PROMPT_HANDLERS: { [K in BrowserPagePromptKind]: BrowserPagePromptHandler<K> } = {
   'external-app': externalAppPrompt,
-  'http-auth': httpAuthPrompt
+  'http-auth': httpAuthPrompt,
+  'local-network': localNetworkPrompt
 }
 
 async function answerPrompt<K extends BrowserPagePromptKind>(

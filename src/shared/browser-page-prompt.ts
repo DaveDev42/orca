@@ -1,10 +1,12 @@
 import type { BrowserExternalAppPrompt } from './browser-external-app'
 import type { BrowserHttpAuthCredentials, BrowserHttpAuthPrompt } from './browser-http-auth'
+import type { BrowserLocalNetworkPrompt } from './browser-local-network'
 
 /** Every prompt a page in the built-in browser can raise: what it shows, and a yes answer. */
 export type BrowserPagePromptKinds = {
   'external-app': { details: BrowserExternalAppPrompt; answer: true }
   'http-auth': { details: BrowserHttpAuthPrompt; answer: BrowserHttpAuthCredentials }
+  'local-network': { details: BrowserLocalNetworkPrompt; answer: true }
 }
 
 export type BrowserPagePromptKind = keyof BrowserPagePromptKinds

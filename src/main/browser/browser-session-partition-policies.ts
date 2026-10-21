@@ -8,6 +8,11 @@ import {
   invalidateBrowserSessionProxyApplication
 } from './browser-session-proxy'
 import { hasSystemMediaAccess, requestSystemMediaAccess } from './browser-media-access'
+import {
+  checkBrowserLocalNetworkAccess,
+  requestBrowserLocalNetworkAccess
+} from './browser-local-network-access'
+import { clearLocalNetworkGrants, isLocalNetworkPermission } from './browser-local-network-grants'
 import { isAutoGrantedBrowserSessionPermission } from './browser-session-permission-policy'
 import { installBrowserSessionUserAgentPolicy } from './browser-session-ua'
 import { getBrowserProcessUserAgentIdentity } from './browser-process-user-agent'
@@ -183,6 +188,26 @@ export async function installBrowserSessionPartitionPolicies(
         callback(false)
         return
       }
+      if (isLocalNetworkPermission(permission)) {
+        // Why: a page may reach services on this device only after the user says so; default deny.
+        const rawUrl = resolvePermissionNoticeUrl(webContents, details)
+        requestBrowserLocalNetworkAccess({
+          partition,
+          requester: webContents,
+          requestingUrl: details?.requestingUrl,
+          respond: (granted) => {
+            if (!granted) {
+              browserManager.notifyPermissionDenied({
+                guestWebContentsId: webContents.id,
+                permission,
+                rawUrl
+              })
+            }
+            callback(granted)
+          }
+        })
+        return
+      }
       const allowed =
         isAutoGrantedBrowserSessionPermission(permission) &&
         !deniesRemoteCliDrivenClipboardRead(permission, webContents?.id)
@@ -196,7 +221,11 @@ export async function installBrowserSessionPartitionPolicies(
       }
       callback(allowed)
     })
-    sess.setPermissionCheckHandler((webContents, permission, _origin, details) => {
+    sess.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+      if (isLocalNetworkPermission(permission)) {
+        // Why: navigator.permissions.query reads this, so it must report the user's grant, not the allowlist.
+        return checkBrowserLocalNetworkAccess({ partition, webContents, requestingOrigin, details })
+      }
       if (deniesRemoteCliDrivenClipboardRead(permission, webContents?.id)) {
         return false
       }
@@ -228,6 +257,7 @@ export function clearBrowserSessionPartitionPolicies(partition: string, sess: Se
   invalidateBrowserSessionProxyApplication(sess)
   retireBrowserSessionUserAgentPolicy(sess)
   configuredPartitions.delete(partition)
+  clearLocalNetworkGrants(partition)
   browserManager.removeCertificateRequestGuard(sess)
   sess.removeListener('will-download', handleWillDownload)
   sess.removeListener('will-download', handleDeniedWillDownload)
