@@ -44,17 +44,29 @@ export function eligibleLocalNetworkOrigin(
 
 // Why in memory only: persistence and a Settings surface to review and revoke grants are a later step.
 const grantedOriginsByPartition = new Map<string, Set<string>>()
+// Why: bumped on every clear, so an answer to a prompt opened before teardown cannot recreate a grant.
+const grantEpochByPartition = new Map<string, number>()
+
+export function localNetworkGrantEpoch(partition: string): number {
+  return grantEpochByPartition.get(partition) ?? 0
+}
 
 export function hasLocalNetworkGrant(partition: string, origin: string): boolean {
   return grantedOriginsByPartition.get(partition)?.has(origin) ?? false
 }
 
-export function grantLocalNetworkAccess(partition: string, origin: string): void {
+/** Records a grant unless the partition was cleared since `epoch` was read; returns whether it did. */
+export function grantLocalNetworkAccess(partition: string, origin: string, epoch: number): boolean {
+  if (epoch !== localNetworkGrantEpoch(partition)) {
+    return false
+  }
   const origins = grantedOriginsByPartition.get(partition) ?? new Set<string>()
   origins.add(origin)
   grantedOriginsByPartition.set(partition, origins)
+  return true
 }
 
 export function clearLocalNetworkGrants(partition: string): void {
   grantedOriginsByPartition.delete(partition)
+  grantEpochByPartition.set(partition, localNetworkGrantEpoch(partition) + 1)
 }

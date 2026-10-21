@@ -154,6 +154,19 @@ describe('browser local network access', () => {
     expect(sentRequests(renderer)).toHaveLength(1)
   })
 
+  it('denies an answer that arrives after the partition was cleared, and keeps no grant', async () => {
+    const renderer = mockRenderer(1)
+    showTabIn(renderer)
+    const guest = mockGuest()
+    const respond = ask(guest)
+
+    // Why: SSH teardown closes the guest without waiting and clears the partition at once.
+    clearLocalNetworkGrants(PARTITION)
+    await answer(renderer, sentRequests(renderer)[0].requestId, true)
+    expect(respond).toHaveBeenCalledWith(false)
+    expect(check(guest)).toBe(false)
+  })
+
   it('shares one prompt between concurrent requests for the same origin', async () => {
     const renderer = mockRenderer(1)
     showTabIn(renderer)

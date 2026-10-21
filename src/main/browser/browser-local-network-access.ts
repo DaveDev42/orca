@@ -3,7 +3,8 @@ import { openBrowserPagePrompt } from './browser-page-prompts'
 import {
   eligibleLocalNetworkOrigin,
   grantLocalNetworkAccess,
-  hasLocalNetworkGrant
+  hasLocalNetworkGrant,
+  localNetworkGrantEpoch
 } from './browser-local-network-grants'
 
 /**
@@ -37,6 +38,7 @@ export function requestBrowserLocalNetworkAccess(args: {
     respond(true)
     return
   }
+  const epoch = localNetworkGrantEpoch(partition)
   const opening = openBrowserPagePrompt({
     kind: 'local-network',
     requester,
@@ -46,10 +48,7 @@ export function requestBrowserLocalNetworkAccess(args: {
     coalesceKey: origin,
     parseAnswer: (value) => (value === true ? true : undefined),
     settle: (allowed) => {
-      if (allowed) {
-        grantLocalNetworkAccess(partition, origin)
-      }
-      respond(allowed === true)
+      respond(allowed === true && grantLocalNetworkAccess(partition, origin, epoch))
     }
   })
   // Why: settle never runs for a refused or windowless page, and the page must not wait on it.

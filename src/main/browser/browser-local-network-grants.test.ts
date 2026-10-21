@@ -5,7 +5,8 @@ import {
   eligibleLocalNetworkOrigin,
   grantLocalNetworkAccess,
   hasLocalNetworkGrant,
-  isLocalNetworkPermission
+  isLocalNetworkPermission,
+  localNetworkGrantEpoch
 } from './browser-local-network-grants'
 
 describe('local network permission names', () => {
@@ -51,7 +52,7 @@ describe('eligibleLocalNetworkOrigin', () => {
 
 describe('local network grants', () => {
   it('scopes a grant to its partition and origin', () => {
-    grantLocalNetworkAccess('persist:a', 'https://acme.test')
+    grantLocalNetworkAccess('persist:a', 'https://acme.test', localNetworkGrantEpoch('persist:a'))
     expect(hasLocalNetworkGrant('persist:a', 'https://acme.test')).toBe(true)
     expect(hasLocalNetworkGrant('persist:b', 'https://acme.test')).toBe(false)
     expect(hasLocalNetworkGrant('persist:a', 'https://other.test')).toBe(false)
@@ -59,11 +60,18 @@ describe('local network grants', () => {
   })
 
   it('drops every grant of a removed partition only', () => {
-    grantLocalNetworkAccess('persist:a', 'https://acme.test')
-    grantLocalNetworkAccess('persist:b', 'https://acme.test')
+    grantLocalNetworkAccess('persist:a', 'https://acme.test', localNetworkGrantEpoch('persist:a'))
+    grantLocalNetworkAccess('persist:b', 'https://acme.test', localNetworkGrantEpoch('persist:b'))
     clearLocalNetworkGrants('persist:a')
     expect(hasLocalNetworkGrant('persist:a', 'https://acme.test')).toBe(false)
     expect(hasLocalNetworkGrant('persist:b', 'https://acme.test')).toBe(true)
     clearLocalNetworkGrants('persist:b')
+  })
+
+  it('refuses a grant read against an epoch from before the partition was cleared', () => {
+    const epoch = localNetworkGrantEpoch('persist:a')
+    clearLocalNetworkGrants('persist:a')
+    expect(grantLocalNetworkAccess('persist:a', 'https://acme.test', epoch)).toBe(false)
+    expect(hasLocalNetworkGrant('persist:a', 'https://acme.test')).toBe(false)
   })
 })
