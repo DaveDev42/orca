@@ -100,6 +100,52 @@ export function buildEditorUnifiedTab(
   }
 }
 
+// Why: a snapshot that already carries per-environment variants of one file must not fan out into
+// one mirrored tab per variant. Variants are the same file whose host tab id was minted from the
+// file itself, `editor:<worktree>:<env>:<path>` or the bare path, so they differ only in the
+// embedded environment segment. Deliberate split tabs carry opaque ids and are never touched.
+// Per (worktree, mode, path) the first minted tab (an active one beats an inactive one) fixes the
+// environment segment; minted tabs from another environment are dropped.
+function mintedEnvironmentSegment(tab: ReadyEditorSurface, worktreeId: string): string | null {
+  if (tab.id === tab.filePath) {
+    return ''
+  }
+  const prefix = `editor:${worktreeId}:`
+  const suffix = `:${tab.filePath}`
+  if (
+    tab.id.startsWith(prefix) &&
+    tab.id.endsWith(suffix) &&
+    tab.id.length > prefix.length + suffix.length - 1
+  ) {
+    return tab.id.slice(prefix.length, tab.id.length - suffix.length)
+  }
+  return null
+}
+
+function dedupeReadyEditorTabsByFile(
+  tabs: readonly ReadyEditorSurface[],
+  worktreeId: string
+): ReadyEditorSurface[] {
+  const bucketOf = (tab: ReadyEditorSurface): string =>
+    JSON.stringify([worktreeId, tab.type === 'markdown' ? tab.mode : 'edit', tab.filePath])
+  const winnerSegmentByBucket = new Map<string, { segment: string; active: boolean }>()
+  for (const tab of tabs) {
+    const segment = mintedEnvironmentSegment(tab, worktreeId)
+    if (segment === null) {
+      continue
+    }
+    const bucket = bucketOf(tab)
+    const current = winnerSegmentByBucket.get(bucket)
+    if (!current || (tab.isActive && !current.active)) {
+      winnerSegmentByBucket.set(bucket, { segment, active: tab.isActive })
+    }
+  }
+  return tabs.filter((tab) => {
+    const segment = mintedEnvironmentSegment(tab, worktreeId)
+    return segment === null || segment === winnerSegmentByBucket.get(bucketOf(tab))?.segment
+  })
+}
+
 export function buildMirroredEditorTabs(
   snapshot: RuntimeMobileSessionTabsResult,
   environmentId: string,
@@ -111,7 +157,10 @@ export function buildMirroredEditorTabs(
   now: number,
   hasLocalDraft: (fileId: string) => boolean
 ): MirroredEditorTab[] {
-  const readyTabs = snapshot.tabs.filter(isReadyEditorTab)
+  const readyTabs = dedupeReadyEditorTabsByFile(
+    snapshot.tabs.filter(isReadyEditorTab),
+    snapshot.worktree
+  )
   if (readyTabs.length === 0) {
     return []
   }

@@ -521,3 +521,43 @@ describe('applyWebSessionTabsSnapshot', () => {
     })
   })
 })
+
+describe('applyWebSessionTabsSnapshot host-invariant editor dedup', () => {
+  beforeEach(resetWebSessionTabsSyncTestState)
+
+  it('mirrors one tab when a snapshot lists the same file under several environment variants', () => {
+    const variant = (id: string, isActive: boolean) => ({
+      type: 'markdown' as const,
+      id,
+      title: 'README.md',
+      filePath: '/repo/README.md',
+      relativePath: 'README.md',
+      language: 'markdown' as const,
+      mode: 'edit' as const,
+      isDirty: false,
+      isActive,
+      // Real fan-out data: every variant shares one backing file id.
+      sourceFileId: 'backing-readme-id',
+      sourceFilePath: '/repo/README.md',
+      sourceRelativePath: 'README.md',
+      documentVersion: 'file:/repo/README.md'
+    })
+    const patch = applyWebSessionTabsSnapshot(
+      makeState(),
+      makeSnapshot(
+        [
+          variant(`editor:${WT}:env-a:/repo/README.md`, false),
+          variant(`editor:${WT}:env-b:/repo/README.md`, false),
+          variant(`editor:${WT}:env-c:/repo/README.md`, false),
+          variant('/repo/README.md', false)
+        ],
+        { activeTabId: null, activeTabType: null }
+      ),
+      ENV,
+      NOW
+    ) as Partial<WebSessionTabsSyncState>
+
+    expect(patch.openFiles).toHaveLength(1)
+    expect(patch.unifiedTabsByWorktree?.[WT]).toHaveLength(1)
+  })
+})
