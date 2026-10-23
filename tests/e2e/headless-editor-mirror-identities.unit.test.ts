@@ -1,12 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildHeadlessMobileSessionEditorTabs } from '../../../main/runtime/mobile-session-editor-projection'
-import type { WorkspaceSessionState } from '../../../shared/workspace-session-state-types'
-import { buildOwnedEditorFileId } from '../store/slices/editor/file-ids/editor-file-ids'
-import { applyWebSessionTabsSnapshot } from './web-session-tabs-sync/snapshot-api'
-import { ENV, NOW, WT, makeSnapshot, makeState } from './web-session-tabs-sync-test-harness'
+import { buildHeadlessMobileSessionEditorTabs } from '../../src/main/runtime/mobile-session-editor-projection'
+import type { WorkspaceSessionState } from '../../src/shared/workspace-session-state-types'
+import { buildOwnedEditorFileId } from '../../src/renderer/src/store/slices/editor/file-ids/editor-file-ids'
+import { applyWebSessionTabsSnapshot } from '../../src/renderer/src/runtime/web-session-tabs-sync/snapshot-api'
+import {
+  ENV,
+  NOW,
+  WT,
+  makeSnapshot,
+  makeState
+} from '../../src/renderer/src/runtime/web-session-tabs-sync-test-harness'
 
 const host = vi.hoisted(() => ({ layoutOwnerIsMain: true }))
-vi.mock('../../../shared/layout-owner-switch', () => ({
+vi.mock('../../src/shared/layout-owner-switch', () => ({
   get ORCA_LAYOUT_OWNER_IS_MAIN() {
     return host.layoutOwnerIsMain
   }
