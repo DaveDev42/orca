@@ -503,18 +503,18 @@ describe('partition permission policy', () => {
     ) => boolean
     const guest = { id: 12, getURL: () => 'https://a.test/' }
     const decisions: Record<string, boolean> = {}
-    for (const permission of ['notifications', 'storage-access', 'geolocation', 'midi']) {
+    for (const permission of ['persistent-storage', 'storage-access', 'hid', 'serial']) {
       requestHandler(guest, permission, (allowed) => (decisions[permission] = allowed), {})
     }
 
     expect(decisions).toEqual({
-      notifications: true,
+      'persistent-storage': true,
       'storage-access': true,
-      geolocation: false,
-      midi: false
+      hid: false,
+      serial: false
     })
-    expect(checkHandler(guest, 'notifications', 'https://a.test', {})).toBe(true)
-    expect(checkHandler(guest, 'geolocation', 'https://a.test', {})).toBe(false)
+    expect(checkHandler(guest, 'persistent-storage', 'https://a.test', {})).toBe(true)
+    expect(checkHandler(guest, 'hid', 'https://a.test', {})).toBe(false)
     expect(mocks.requestBrowserLocalNetworkAccess).not.toHaveBeenCalled()
     expect(mocks.checkBrowserLocalNetworkAccess).not.toHaveBeenCalled()
   })
