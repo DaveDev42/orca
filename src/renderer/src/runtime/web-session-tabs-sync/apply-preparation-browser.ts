@@ -1,4 +1,5 @@
 import { buildWebSessionExistingTabIndex } from '../web-session-existing-tab-index'
+import { resolveWebSessionVisibleTabId } from '../web-session-focus-intent'
 import { chooseTargetGroupId, buildHostGroupIdByTabId } from './tab-group-layout-tree'
 import {
   buildMirroredBrowserTabs,
@@ -125,7 +126,7 @@ export function prepareWebSessionTabsSnapshotBrowser(
     mirroredTerminalTabEntries.length + mirroredBrowserTabs.length,
     now,
     (fileId) => state.editorDrafts?.[fileId] !== undefined,
-    navigationIntentTab?.id ?? null
+    navigationIntentTab?.id ?? resolveWebSessionVisibleTabId(state, worktreeId)
   )
   const mirroredAgentTabs = buildMirroredAgentTabs(
     snapshot,

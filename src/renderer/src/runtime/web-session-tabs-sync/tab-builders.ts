@@ -101,14 +101,16 @@ export function buildEditorUnifiedTab(
   }
 }
 
-// Why: a snapshot that already carries per-environment variants of one file must not fan out into
-// one mirrored tab per variant. Variants are the same file whose host tab id was minted from the
-// file itself, buildOwnedEditorFileId(path, worktree, env) or the bare path, so they differ only in
-// the embedded environment segment. Deliberate split tabs carry opaque ids and are never touched.
-// Per (worktree, mode, path) one minted tab fixes the environment segment: the tab a pending
-// focus/navigation intent targets, else an active one, else the first; minted tabs from another
-// environment are dropped.
+// Older peers can echo one file under IDs minted by several environments.
 function mintedEnvironmentSegment(tab: ReadyEditorSurface, worktreeId: string): string | null {
+  if (
+    tab.type !== 'markdown' ||
+    typeof tab.sourceFileId !== 'string' ||
+    !tab.sourceFileId ||
+    tab.sourceFileId === tab.sourceFilePath
+  ) {
+    return null
+  }
   if (tab.id === tab.filePath) {
     return ''
   }
@@ -131,13 +133,18 @@ function mintedEnvironmentSegment(tab: ReadyEditorSurface, worktreeId: string): 
   return buildOwnedEditorFileId(tab.filePath, worktreeId, runtimeKey) === tab.id ? segment : null
 }
 
-function dedupeReadyEditorTabsByFile(
+function dedupeReadyEditorTabsBySource(
   tabs: readonly ReadyEditorSurface[],
   worktreeId: string,
   preferredHostTabId: string | null
 ): ReadyEditorSurface[] {
   const bucketOf = (tab: ReadyEditorSurface): string =>
-    JSON.stringify([worktreeId, tab.type === 'markdown' ? tab.mode : 'edit', tab.filePath])
+    JSON.stringify([
+      worktreeId,
+      tab.type === 'markdown' ? tab.mode : 'edit',
+      tab.filePath,
+      tab.type === 'markdown' ? tab.sourceFileId : null
+    ])
   const rank = (tab: ReadyEditorSurface): number =>
     tab.id === preferredHostTabId ? 2 : tab.isActive ? 1 : 0
   const winnerByBucket = new Map<string, { segment: string; rank: number }>()
@@ -171,11 +178,7 @@ export function buildMirroredEditorTabs(
   hasLocalDraft: (fileId: string) => boolean,
   preferredHostTabId: string | null = null
 ): MirroredEditorTab[] {
-  const readyTabs = dedupeReadyEditorTabsByFile(
-    snapshot.tabs.filter(isReadyEditorTab),
-    snapshot.worktree,
-    preferredHostTabId
-  )
+  const readyTabs = snapshot.tabs.filter(isReadyEditorTab)
   if (readyTabs.length === 0) {
     return []
   }
@@ -184,7 +187,12 @@ export function buildMirroredEditorTabs(
   for (const tab of readyTabs) {
     resolveFile(tab, existingTabIndex.getEditorUnifiedTabByHostId(tab.id))
   }
-  return readyTabs.map((tab, index) => {
+  const distinctTabs = dedupeReadyEditorTabsBySource(
+    readyTabs,
+    snapshot.worktree,
+    preferredHostTabId
+  )
+  return distinctTabs.map((tab, index) => {
     const identity = resolveFile(tab, existingTabIndex.getEditorUnifiedTabByHostId(tab.id))
     const { fileId, existingFile, sourceFileId } = identity
     const existingUnifiedTab = existingTabIndex.getEditorUnifiedTab(fileId, tab.id)
