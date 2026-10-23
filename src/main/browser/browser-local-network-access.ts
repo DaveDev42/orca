@@ -73,7 +73,9 @@ export function checkBrowserLocalNetworkAccess(args: {
 }): boolean {
   const { webContents, details } = args
   const requesting = details?.requestingUrl || args.requestingOrigin
-  // Electron sets embeddingOrigin only for cross-origin subframes, so it is checked first.
+  // Why: Electron 43 sets embeddingOrigin for main-frame queries too (a URL-ish string with a trailing
+  // slash, e.g. "https://example.com/"), so it is not a cross-origin signal. eligibleLocalNetworkOrigin
+  // parses both sides as URLs and compares origins, which rejects a cross-origin subframe.
   const topLevel =
     details?.embeddingOrigin ||
     (webContents && !webContents.isDestroyed() ? webContents.getURL() : '') ||
@@ -85,7 +87,7 @@ export function checkBrowserLocalNetworkAccess(args: {
   if (hasLocalNetworkGrant(args.partition, origin)) {
     return true
   }
-  if (webContents && !webContents.isDestroyed() && details?.embeddingOrigin === undefined) {
+  if (webContents && !webContents.isDestroyed()) {
     requestBrowserLocalNetworkAccess({
       partition: args.partition,
       requester: webContents,

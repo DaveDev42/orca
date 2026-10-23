@@ -265,6 +265,35 @@ describe('browser local network access', () => {
       expect(check(guest)).toBe(true)
     })
 
+    it('asks on the Electron 43 main-frame details shape, which carries embeddingOrigin', async () => {
+      const renderer = mockRenderer(1)
+      showTabIn(renderer)
+      const guest = mockGuest('https://example.com/')
+      const details = {
+        embeddingOrigin: 'https://example.com/',
+        isMainFrame: true,
+        requestingUrl: 'https://example.com/'
+      }
+
+      expect(check(guest, details)).toBe(false)
+      const [request] = sentRequests(renderer)
+      expect(request).toMatchObject({ details: { origin: 'https://example.com' } })
+
+      await answer(renderer, request.requestId, true)
+      expect(check(guest, details)).toBe(true)
+    })
+
+    it('does not ask for a cross-origin subframe whose embeddingOrigin differs', () => {
+      const renderer = mockRenderer(1)
+      showTabIn(renderer)
+      const guest = mockGuest('https://b.example/')
+
+      expect(
+        check(guest, { requestingUrl: 'https://a.example/', embeddingOrigin: 'https://b.example/' })
+      ).toBe(false)
+      expect(sentRequests(renderer)).toHaveLength(0)
+    })
+
     it('does not ask again after a decline until the user acts in the page', async () => {
       const renderer = mockRenderer(1)
       showTabIn(renderer)
