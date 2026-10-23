@@ -35,7 +35,8 @@ export function prepareWebSessionTabsSnapshotBrowser(
     mirroredTerminalIds,
     removedTerminalIds,
     reconcilesNonAgentTabs,
-    batchContext
+    batchContext,
+    navigationIntentTab
   } = base
   const targetGroupId = chooseTargetGroupId(state, snapshot)
   const hostGroupIdByTabId = buildHostGroupIdByTabId(snapshot.tabGroups)
@@ -123,7 +124,8 @@ export function prepareWebSessionTabsSnapshotBrowser(
     targetGroupId,
     mirroredTerminalTabEntries.length + mirroredBrowserTabs.length,
     now,
-    (fileId) => state.editorDrafts?.[fileId] !== undefined
+    (fileId) => state.editorDrafts?.[fileId] !== undefined,
+    navigationIntentTab?.id ?? null
   )
   const mirroredAgentTabs = buildMirroredAgentTabs(
     snapshot,

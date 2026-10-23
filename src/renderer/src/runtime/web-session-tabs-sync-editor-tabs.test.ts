@@ -553,3 +553,78 @@ describe('applyWebSessionTabsSnapshot', () => {
     })
   })
 })
+
+describe('applyWebSessionTabsSnapshot host-invariant editor dedup', () => {
+  beforeEach(resetWebSessionTabsSyncTestState)
+
+  const variant = (id: string, isActive: boolean) => ({
+    type: 'markdown' as const,
+    id,
+    title: 'README.md',
+    filePath: '/repo/README.md',
+    relativePath: 'README.md',
+    language: 'markdown' as const,
+    mode: 'edit' as const,
+    isDirty: false,
+    isActive,
+    // Real fan-out data: every variant shares one backing file id.
+    sourceFileId: 'backing-readme-id',
+    sourceFilePath: '/repo/README.md',
+    sourceRelativePath: 'README.md',
+    documentVersion: 'file:/repo/README.md'
+  })
+  // Host tab ids are the host's own file ids, so they carry the encoded segments.
+  const envVariantId = (env: string) => buildOwnedEditorFileId('/repo/README.md', WT, env)
+
+  it('mirrors one tab when a snapshot lists the same file under several environment variants', () => {
+    const patch = applyWebSessionTabsSnapshot(
+      makeState(),
+      makeSnapshot(
+        [
+          variant(envVariantId('env-a'), false),
+          variant(envVariantId('env-b'), false),
+          variant(envVariantId('env-c'), false),
+          variant(buildOwnedEditorFileId('/repo/README.md', WT, null), false),
+          variant('/repo/README.md', false)
+        ],
+        { activeTabId: null, activeTabType: null }
+      ),
+      ENV,
+      NOW
+    ) as Partial<WebSessionTabsSyncState>
+
+    expect(patch.openFiles).toHaveLength(1)
+    expect(patch.unifiedTabsByWorktree?.[WT]).toHaveLength(1)
+    expect(patch.unifiedTabsByWorktree?.[WT]?.[0]?.id).toBe(envVariantId('env-a'))
+  })
+
+  it('keeps the variant a follow navigation targets over an active one', () => {
+    const patch = applyWebSessionTabsSnapshot(
+      makeState(),
+      makeSnapshot([variant(envVariantId('env-a'), true), variant(envVariantId('env-b'), false)], {
+        activeTabId: envVariantId('env-b'),
+        activeTabType: 'markdown',
+        navigationIntent: 'follow'
+      }),
+      ENV,
+      NOW
+    ) as Partial<WebSessionTabsSyncState>
+
+    expect(patch.unifiedTabsByWorktree?.[WT]).toHaveLength(1)
+    expect(patch.unifiedTabsByWorktree?.[WT]?.[0]?.id).toBe(envVariantId('env-b'))
+  })
+
+  it('leaves split tabs with opaque ids alone', () => {
+    const patch = applyWebSessionTabsSnapshot(
+      makeState(),
+      makeSnapshot([variant(envVariantId('env-a'), false), variant('split-tab-7f3a', false)], {
+        activeTabId: null,
+        activeTabType: null
+      }),
+      ENV,
+      NOW
+    ) as Partial<WebSessionTabsSyncState>
+
+    expect(patch.unifiedTabsByWorktree?.[WT]).toHaveLength(2)
+  })
+})
