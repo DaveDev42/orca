@@ -14,6 +14,14 @@ import {
 } from './browser-local-network-access'
 import { clearLocalNetworkGrants, isLocalNetworkPermission } from './browser-local-network-grants'
 import { isAutoGrantedBrowserSessionPermission } from './browser-session-permission-policy'
+import {
+  browserSitePermissionRequestingOrigin,
+  browserSitePermissionsFor,
+  decideBrowserSitePermissions,
+  isBrowserSitePermissionAllowed,
+  savedBrowserSitePermissions,
+  sessionBrowserSitePermissions
+} from './browser-site-permission-prompt'
 import { installBrowserSessionUserAgentPolicy } from './browser-session-ua'
 import { getBrowserProcessUserAgentIdentity } from './browser-process-user-agent'
 import {
@@ -124,6 +132,8 @@ export async function installBrowserSessionPartitionPolicies(
     permissions?: BrowserPartitionPermissionPolicy
     applyAppWideProxy?: boolean
     userAgentExceptions?: boolean
+    /** `session`: answers last until Orca quits instead of being saved to the profile. */
+    sitePermissions?: 'saved' | 'session'
   } = {}
 ): Promise<void> {
   const { partition } = profile
@@ -146,36 +156,11 @@ export async function installBrowserSessionPartitionPolicies(
     sess.setPermissionCheckHandler(() => false)
     clearBrowserWebAuthnAccessHandlers(sess)
   } else {
+    const siteMemory =
+      options.sitePermissions === 'session'
+        ? sessionBrowserSitePermissions(partition)
+        : savedBrowserSitePermissions(profile.id)
     sess.setPermissionRequestHandler((webContents, permission, callback, details) => {
-      // Why: defer media to macOS TCC; denying at the session layer throws NotAllowedError even after the user granted Camera/Mic to the OS.
-      if (permission === 'media') {
-        // Capture before async handling; opaque frames cannot be attributed to a named site.
-        const rawUrl = resolvePermissionNoticeUrl(webContents, details)
-        void requestSystemMediaAccess(
-          details as Electron.MediaAccessPermissionRequest | undefined
-        ).then(
-          (granted) => {
-            if (!granted) {
-              browserManager.notifyPermissionDenied({
-                guestWebContentsId: webContents.id,
-                permission,
-                rawUrl
-              })
-            }
-            callback(granted)
-          },
-          (error: unknown) => {
-            console.error('[permissions] Browser media access failed:', error)
-            browserManager.notifyPermissionDenied({
-              guestWebContentsId: webContents.id,
-              permission,
-              rawUrl
-            })
-            callback(false)
-          }
-        )
-        return
-      }
       if (
         permission === 'openExternal' &&
         browserManager.requestExternalAppLaunch(
@@ -188,38 +173,65 @@ export async function installBrowserSessionPartitionPolicies(
         callback(false)
         return
       }
+      // Capture before async handling; opaque frames cannot be attributed to a named site.
+      const rawUrl = resolvePermissionNoticeUrl(webContents, details)
+      const notifyDenied = (): void =>
+        browserManager.notifyPermissionDenied({
+          guestWebContentsId: webContents.id,
+          permission,
+          rawUrl
+        })
       if (isLocalNetworkPermission(permission)) {
         // Why: a page may reach services on this device only after the user says so; default deny.
-        const rawUrl = resolvePermissionNoticeUrl(webContents, details)
         requestBrowserLocalNetworkAccess({
           partition,
           requester: webContents,
           requestingUrl: details?.requestingUrl,
           respond: (granted) => {
             if (!granted) {
-              browserManager.notifyPermissionDenied({
-                guestWebContentsId: webContents.id,
-                permission,
-                rawUrl
-              })
+              notifyDenied()
             }
             callback(granted)
           }
         })
         return
       }
-      const allowed =
-        isAutoGrantedBrowserSessionPermission(permission) &&
-        !deniesRemoteCliDrivenClipboardRead(permission, webContents?.id)
-      if (!allowed) {
-        const rawUrl = resolvePermissionNoticeUrl(webContents, details)
-        browserManager.notifyPermissionDenied({
-          guestWebContentsId: webContents.id,
-          permission,
-          rawUrl
-        })
+      if (deniesRemoteCliDrivenClipboardRead(permission, webContents.id)) {
+        notifyDenied()
+        callback(false)
+        return
       }
-      callback(allowed)
+      const mediaRequest = 'mediaTypes' in details ? details : undefined
+      const sitePermissions = browserSitePermissionsFor(permission, mediaRequest?.mediaTypes)
+      if (!sitePermissions) {
+        const allowed = isAutoGrantedBrowserSessionPermission(permission)
+        if (!allowed) {
+          notifyDenied()
+        }
+        callback(allowed)
+        return
+      }
+      const decide = async (): Promise<boolean> => {
+        const allowed = await decideBrowserSitePermissions({
+          requester: webContents,
+          frameOrigin: browserSitePermissionRequestingOrigin(webContents, details),
+          memory: siteMemory,
+          permissions: sitePermissions
+        })
+        if (!allowed || permission !== 'media') {
+          return allowed
+        }
+        // Why: macOS gates camera and mic per app too; the user allowed the site, so the notice names the OS refusal.
+        const granted = await requestSystemMediaAccess(mediaRequest)
+        if (!granted) {
+          notifyDenied()
+        }
+        return granted
+      }
+      void decide().then(callback, (error: unknown) => {
+        console.error('[permissions] Browser site permission failed:', error)
+        callback(false)
+      })
     })
     sess.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
       if (isLocalNetworkPermission(permission)) {
@@ -229,11 +241,27 @@ export async function installBrowserSessionPartitionPolicies(
       if (deniesRemoteCliDrivenClipboardRead(permission, webContents?.id)) {
         return false
       }
-      if (permission === 'media') {
-        return hasSystemMediaAccess(details?.mediaType)
-      }
       if (allowsBrowserWebAuthnPermission(permission, details)) {
         return true
+      }
+      const sitePermissions = browserSitePermissionsFor(
+        permission,
+        details?.mediaType ? [details.mediaType] : undefined
+      )
+      if (sitePermissions) {
+        return (
+          isBrowserSitePermissionAllowed({
+            // Why: a service worker has no contents; its origin is the site's.
+            source: {
+              pageUrl: webContents?.getURL() ?? requestingOrigin,
+              // Why: unlike request details, a check names the frame's real (inherited) origin.
+              frameOrigin: requestingOrigin
+            },
+            memory: siteMemory,
+            permissions: sitePermissions
+          }) &&
+          (permission !== 'media' || hasSystemMediaAccess(details?.mediaType))
+        )
       }
       return isAutoGrantedBrowserSessionPermission(permission)
     })

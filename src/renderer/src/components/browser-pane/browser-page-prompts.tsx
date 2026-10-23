@@ -12,10 +12,11 @@ import {
 import { externalAppPrompt } from './browser-external-app-prompt'
 import { httpAuthPrompt } from './browser-http-auth-prompt'
 import { localNetworkPrompt } from './browser-local-network-prompt'
+import { sitePermissionPrompt } from './browser-site-permission-prompt'
 
 /** How the window asks one kind of page prompt. */
 export type BrowserPagePromptHandler<K extends BrowserPagePromptKind> = {
-  /** Resolves the user's yes answer; null when they decline or `signal` aborts. */
+  /** Resolves the user's answer; null when they decline or dismiss it, or `signal` aborts. */
   ask: (
     confirm: ConfirmationDialogContextValue,
     details: BrowserPagePromptDetails<K>,
@@ -28,7 +29,8 @@ export type BrowserPagePromptHandler<K extends BrowserPagePromptKind> = {
 const PROMPT_HANDLERS: { [K in BrowserPagePromptKind]: BrowserPagePromptHandler<K> } = {
   'external-app': externalAppPrompt,
   'http-auth': httpAuthPrompt,
-  'local-network': localNetworkPrompt
+  'local-network': localNetworkPrompt,
+  'site-permission': sitePermissionPrompt
 }
 
 async function answerPrompt<K extends BrowserPagePromptKind>(
