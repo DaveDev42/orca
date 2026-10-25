@@ -104,4 +104,27 @@ describe('NotificationHostToggles', () => {
     }
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('offers a phone switch per remote machine that stays independent of the banner switch', () => {
+    hostOptions.current = [host('local', 'Local Mac'), host('runtime:m4air', 'M4Air mac')]
+    const onChange = vi.fn()
+    const onPhoneChange = vi.fn()
+    const { getByRole, getAllByRole } = render(
+      <NotificationHostToggles
+        mutedNotificationSourceIds={[]}
+        phoneMutedNotificationSourceIds={['runtime:m4air']}
+        disabled={false}
+        onChange={onChange}
+        onPhoneChange={onPhoneChange}
+      />
+    )
+    fireEvent.click(getByRole('button', { name: /Machines/ }))
+    expect(getAllByRole('switch', { name: 'Push to phone' })).toHaveLength(1)
+    const phoneSwitch = getByRole('switch', { name: 'Push to phone' })
+    expect(phoneSwitch.getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(phoneSwitch)
+    expect(onPhoneChange).toHaveBeenCalledWith(['runtime:m4air'], false)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(getByRole('switch', { name: 'M4Air mac' }).getAttribute('aria-checked')).toBe('true')
+  })
 })
