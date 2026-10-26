@@ -119,8 +119,8 @@ describe('NotificationHostToggles', () => {
       />
     )
     fireEvent.click(getByRole('button', { name: /Machines/ }))
-    expect(getAllByRole('switch', { name: 'Push to phone' })).toHaveLength(1)
-    const phoneSwitch = getByRole('switch', { name: 'Push to phone' })
+    expect(getAllByRole('switch', { name: /^Push .* to phone$/ })).toHaveLength(1)
+    const phoneSwitch = getByRole('switch', { name: 'Push M4Air mac to phone' })
     expect(phoneSwitch.getAttribute('aria-checked')).toBe('false')
     fireEvent.click(phoneSwitch)
     expect(onPhoneChange).toHaveBeenCalledWith(['runtime:m4air'], false)

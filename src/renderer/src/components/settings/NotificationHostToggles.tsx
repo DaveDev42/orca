@@ -102,6 +102,11 @@ export function NotificationHostToggles({
                         'auto.components.settings.NotificationHostToggles.phoneDescription',
                         'Turn off if another computer already pushes this machine’s alerts to your phone.'
                       )}
+                      ariaLabel={translate(
+                        'auto.components.settings.NotificationHostToggles.phoneAriaLabel',
+                        'Push {{host}} to phone',
+                        { host: host.label }
+                      )}
                       checked={!isPhoneMuted(host)}
                       onToggle={() =>
                         onPhoneChange([host.id, ...(host.aliasHostIds ?? [])], !isPhoneMuted(host))
