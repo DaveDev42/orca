@@ -108,6 +108,7 @@ export function NotificationHostToggles({
                         { host: host.label }
                       )}
                       checked={!isPhoneMuted(host)}
+                      disabled={disabled}
                       onToggle={() =>
                         onPhoneChange([host.id, ...(host.aliasHostIds ?? [])], !isPhoneMuted(host))
                       }

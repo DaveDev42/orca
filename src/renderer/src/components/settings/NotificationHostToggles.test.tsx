@@ -88,21 +88,27 @@ describe('NotificationHostToggles', () => {
   it('allows expansion while the master switch disables machine changes', () => {
     hostOptions.current = [host('local', 'Local Mac'), host('runtime:m4air', 'M4Air mac')]
     const onChange = vi.fn()
+    const onPhoneChange = vi.fn()
     const { getByRole, getAllByRole } = render(
       <NotificationHostToggles
         mutedNotificationSourceIds={['local']}
+        phoneMutedNotificationSourceIds={[]}
         disabled
         onChange={onChange}
+        onPhoneChange={onPhoneChange}
       />
     )
     const heading = getByRole('button', { name: /Machines/ })
     expect(heading.hasAttribute('disabled')).toBe(false)
     fireEvent.click(heading)
-    for (const toggle of getAllByRole('switch')) {
+    const switches = getAllByRole('switch')
+    expect(switches).toHaveLength(3)
+    for (const toggle of switches) {
       expect(toggle.hasAttribute('disabled')).toBe(true)
       fireEvent.click(toggle)
     }
     expect(onChange).not.toHaveBeenCalled()
+    expect(onPhoneChange).not.toHaveBeenCalled()
   })
 
   it('offers a phone switch per remote machine that stays independent of the banner switch', () => {
