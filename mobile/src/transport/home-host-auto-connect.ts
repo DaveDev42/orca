@@ -7,7 +7,10 @@ export function selectHomeAutoConnectHostIds(
   limit = HOME_AUTO_CONNECT_LIMIT
 ): string[] {
   return [...hosts]
-    .filter((host) => host.deviceToken.length > 0 && host.publicKeyB64.length > 0)
+    .filter(
+      (host) =>
+        host.autoConnect !== false && host.deviceToken.length > 0 && host.publicKeyB64.length > 0
+    )
     .sort(
       (left, right) => right.lastConnected - left.lastConnected || left.id.localeCompare(right.id)
     )

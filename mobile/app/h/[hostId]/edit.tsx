@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Switch
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -32,6 +33,7 @@ export default function EditHostScreen() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
+  const [autoConnect, setAutoConnect] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // Ref blocks re-entry before async setSaving rerenders.
@@ -63,6 +65,7 @@ export default function EditHostScreen() {
         // The field edits the phone's override; an empty field means "use the desktop's name".
         setName(found.personalName ?? '')
         setAddress(displayHostEndpoint(found.endpoint))
+        setAutoConnect(found.autoConnect !== false)
         setLoadError(null)
       } catch (err) {
         if (revision !== routeRevision.current) {
@@ -95,11 +98,12 @@ export default function EditHostScreen() {
   const nameTrimmed = name.trim()
   const nameChanged = host != null && nameTrimmed !== (host.personalName ?? '')
   const endpointChanged = endpointEdit?.kind === 'changed'
+  const autoConnectChanged = host != null && autoConnect !== (host.autoConnect !== false)
   const canSave =
     host != null &&
     endpointEdit != null &&
     endpointEdit.kind !== 'invalid' &&
-    (nameChanged || endpointChanged) &&
+    (nameChanged || endpointChanged || autoConnectChanged) &&
     !saving
 
   async function handleSave() {
@@ -114,7 +118,7 @@ export default function EditHostScreen() {
 
     const willRename = nextName !== (host.personalName ?? '')
     const nextEndpoint = endpointEdit.kind === 'changed' ? endpointEdit.endpoint : undefined
-    if (!willRename && nextEndpoint === undefined) {
+    if (!willRename && nextEndpoint === undefined && !autoConnectChanged) {
       router.back()
       return
     }
@@ -127,7 +131,8 @@ export default function EditHostScreen() {
       // Persist name+endpoint atomically; a removed host must throw rather than silently no-op.
       await updateHostNameAndEndpoint(host.id, {
         ...(willRename ? { personalName: nextName || null } : {}),
-        ...(nextEndpoint !== undefined ? { endpoint: nextEndpoint } : {})
+        ...(nextEndpoint !== undefined ? { endpoint: nextEndpoint } : {}),
+        ...(autoConnectChanged ? { autoConnect } : {})
       })
     } catch (err) {
       if (revision === routeRevision.current) {
@@ -266,6 +271,21 @@ export default function EditHostScreen() {
               <Text style={styles.previewError}>{endpointEdit.error}</Text>
             ) : null}
 
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>Auto-connect</Text>
+              <Switch
+                value={autoConnect}
+                accessibilityLabel="Auto-connect"
+                onValueChange={setAutoConnect}
+                trackColor={{ false: colors.bgRaised, true: colors.textSecondary }}
+                thumbColor={colors.textPrimary}
+              />
+            </View>
+            <Text style={styles.hint}>
+              Connect to this host when the app opens. Turn off for a desktop that is often asleep
+              or offline; you can still connect by opening it.
+            </Text>
+
             {saveError ? <Text style={styles.errorText}>{saveError}</Text> : null}
           </ScrollView>
         </KeyboardAvoidingView>
@@ -350,6 +370,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: typography.metaSize,
     lineHeight: 16
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md
+  },
+  switchLabel: {
+    color: colors.textPrimary,
+    fontSize: typography.bodySize,
+    fontWeight: '500'
   },
   preview: {
     marginTop: spacing.sm,

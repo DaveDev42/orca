@@ -288,10 +288,10 @@ export async function retryPendingHostCredentialCleanup(): Promise<{
   )
 }
 
-// Commit name/endpoint atomically; personalName:null clears the phone override in favor of the reported name.
+// Commit name/endpoint/auto-connect atomically; personalName:null clears the phone override in favor of the reported name.
 export async function updateHostNameAndEndpoint(
   hostId: string,
-  updates: { personalName?: string | null; endpoint?: string }
+  updates: { personalName?: string | null; endpoint?: string; autoConnect?: boolean }
 ): Promise<void> {
   await mutateStoredHosts((hosts) => {
     const index = hosts.findIndex((host) => host.id === hostId)
@@ -304,6 +304,11 @@ export async function updateHostNameAndEndpoint(
     }
     if (updates.personalName !== undefined) {
       updated = withPersonalName(updated, updates.personalName, hosts)
+    }
+    if (updates.autoConnect !== undefined) {
+      // Store only the opt-out; absence means auto-connect.
+      const { autoConnect: _previous, ...rest } = updated
+      updated = updates.autoConnect ? rest : { ...rest, autoConnect: false }
     }
     const next = hosts.slice()
     next[index] = updated

@@ -28,7 +28,7 @@ export const updateLastConnected = (_hostId: string): Promise<void> => Promise.r
 
 export function updateHostNameAndEndpoint(
   _hostId: string,
-  _updates: { personalName?: string | null; endpoint?: string }
+  _updates: { personalName?: string | null; endpoint?: string; autoConnect?: boolean }
 ): Promise<void> {
   return Promise.resolve()
 }

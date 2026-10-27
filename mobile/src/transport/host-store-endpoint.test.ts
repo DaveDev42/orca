@@ -103,6 +103,22 @@ describe('updateHostNameAndEndpoint', () => {
     ])
   })
 
+  it('persists only the auto-connect opt-out and drops the key when re-enabled', async () => {
+    vi.mocked(AsyncStorage.getItem).mockResolvedValue(JSON.stringify(stored))
+    await updateHostNameAndEndpoint('host-1', { autoConnect: false })
+    expect(writtenHosts()).toEqual([
+      { ...legacyOverride(stored[0]!), autoConnect: false },
+      legacyOverride(stored[1]!)
+    ])
+
+    vi.mocked(AsyncStorage.setItem).mockReset()
+    vi.mocked(AsyncStorage.getItem).mockResolvedValue(
+      JSON.stringify([{ ...stored[0], autoConnect: false }, stored[1]])
+    )
+    await updateHostNameAndEndpoint('host-1', { autoConnect: true })
+    expect(writtenHosts()).toEqual([legacyOverride(stored[0]!), legacyOverride(stored[1]!)])
+  })
+
   it('throws and writes nothing when the host is missing', async () => {
     vi.mocked(AsyncStorage.getItem).mockResolvedValue('[]')
 

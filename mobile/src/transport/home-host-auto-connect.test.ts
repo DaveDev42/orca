@@ -32,6 +32,18 @@ describe('home host auto-connect', () => {
     expect(selectHomeAutoConnectHostIds(hosts)).toEqual(['newest', 'second', 'third'])
   })
 
+  it('skips hosts that opted out and gives the slot to the next recent host', () => {
+    const hosts = [
+      { ...host('paused', 9), autoConnect: false },
+      { ...host('on', 5), autoConnect: true },
+      host('legacy', 4),
+      host('third', 3),
+      host('fourth', 2)
+    ]
+
+    expect(selectHomeAutoConnectHostIds(hosts)).toEqual(['on', 'legacy', 'third'])
+  })
+
   it('does not mutate the host card order', () => {
     const hosts = [host('old', 1), host('new', 2)]
 

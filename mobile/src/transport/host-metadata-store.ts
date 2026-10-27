@@ -33,7 +33,8 @@ export function toStoredHostProfile(host: HostProfile): StoredHostProfile {
     lastKnownHostPlatform,
     endpoint,
     publicKeyB64,
-    lastConnected
+    lastConnected,
+    autoConnect
   } = host
   return {
     id,
@@ -43,7 +44,8 @@ export function toStoredHostProfile(host: HostProfile): StoredHostProfile {
     ...(lastKnownHostPlatform !== undefined ? { lastKnownHostPlatform } : {}),
     endpoint,
     publicKeyB64,
-    lastConnected
+    lastConnected,
+    ...(autoConnect !== undefined ? { autoConnect } : {})
   }
 }
 

@@ -18,6 +18,7 @@ vi.mock('react-native', () => ({
   Platform: { OS: 'ios' },
   Pressable: 'Pressable',
   ScrollView: 'ScrollView',
+  Switch: 'Switch',
   StyleSheet: { create: (styles: unknown) => styles },
   Text: 'Text',
   TextInput: 'TextInput',
@@ -192,6 +193,24 @@ describe('edit host handleSave', () => {
       endpoint: 'ws://192.168.1.20:6768'
     })
     expect(dependencies.refreshHostClient).toHaveBeenCalledWith('host-1')
+    expect(dependencies.back).toHaveBeenCalledTimes(1)
+
+    act(() => renderer.unmount())
+  })
+
+  it('auto-connect toggle saves alone without reconnecting', async () => {
+    const renderer = await renderEditHostRoute()
+    const toggle = renderer.root
+      .findAll((node) => String(node.type) === 'Switch')
+      .find((node) => node.props.accessibilityLabel === 'Auto-connect')
+    expect(toggle?.props.value).toBe(true)
+    act(() => toggle?.props.onValueChange(false))
+    await pressSave(renderer)
+
+    expect(dependencies.updateHostNameAndEndpoint).toHaveBeenCalledWith('host-1', {
+      autoConnect: false
+    })
+    expect(dependencies.refreshHostClient).not.toHaveBeenCalled()
     expect(dependencies.back).toHaveBeenCalledTimes(1)
 
     act(() => renderer.unmount())

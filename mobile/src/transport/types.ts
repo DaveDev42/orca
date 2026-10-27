@@ -110,6 +110,8 @@ export type HostProfile = {
   deviceToken: string
   publicKeyB64: string
   lastConnected: number
+  /** Home auto-connect; only an explicit  opts out, so older records keep connecting. */
+  autoConnect?: boolean
   /** Relay routing, joined from the overlay; only `setRelayRouting` and pairing write it. */
   relay?: MobileRelayEndpoint
 }
@@ -140,6 +142,7 @@ export const HostProfileSchema = z.object({
   deviceToken: z.string().min(1),
   publicKeyB64: z.string().min(1),
   lastConnected: z.number().finite(),
+  autoConnect: z.boolean().optional(),
   relay: MobileRelayEndpointSchema.optional()
 })
 
@@ -150,7 +153,8 @@ export const StoredHostProfileSchema = z.object({
   ...hostNameIdentityFields,
   endpoint: z.string().min(1),
   publicKeyB64: z.string().min(1),
-  lastConnected: z.number().finite()
+  lastConnected: z.number().finite(),
+  autoConnect: z.boolean().optional()
 })
 
 export type StoredHostProfile = z.infer<typeof StoredHostProfileSchema>
