@@ -154,7 +154,7 @@ describe('foregrounding a phone that was suspended mid-dial', () => {
     const client = connect(TAILSCALE_ENDPOINT, 'token', 'server-key')
     latest().authenticate()
     latest().close()
-    for (let dial = 0; dial < 4; dial++) {
+    for (let dial = 0; dial < 1; dial++) {
       await vi.advanceTimersByTimeAsync(12_000 + 60_000)
     }
     expect(label(client, TAILSCALE_ENDPOINT)).toBe("Can't connect — check Tailscale")
@@ -179,14 +179,22 @@ describe('foregrounding a phone that was suspended mid-dial', () => {
     latest().close()
 
     // Book abandoned stale dials as failures so repeated foregrounds cannot reset escalation indefinitely (#10119).
-    for (let visit = 0; visit < 14; visit++) {
+    for (let visit = 0; visit < 6; visit++) {
       await advanceUntilDialing(client)
       suspend(30_000)
-      client.notifyForeground()
+      client.notifyForeground('app-resume')
     }
 
-    expect(client.getReconnectAttempt()).toBeGreaterThanOrEqual(12)
+    expect(client.getReconnectAttempt()).toBeGreaterThanOrEqual(6)
     expect(label(client, TAILSCALE_ENDPOINT)).toBe("Can't reach desktop — check Tailscale")
+
+    // Now parked: further OS resumes stay silent; only an explicit focus redials.
+    const parkedSockets = sockets.length
+    client.notifyForeground('app-resume')
+    client.notifyForeground('network-change')
+    expect(sockets.length).toBe(parkedSockets)
+    client.notifyForeground('focus')
+    expect(sockets.length).toBe(parkedSockets + 1)
 
     latest().authenticate()
     expect(label(client, TAILSCALE_ENDPOINT)).toBe('Connected')

@@ -161,7 +161,7 @@ describe('unauthorized close-code mapping (silent 4001)', () => {
   it('keeps the generic reconnect loop for non-4001 closes', async () => {
     const client = connect('ws://desktop.invalid', 'token', 'server-key')
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       const previousCount = mockSockets.length
       if (i > 0) {
         await vi.advanceTimersByTimeAsync(60_000)

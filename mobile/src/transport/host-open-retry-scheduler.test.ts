@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installIllegalInvocationTimerGuards } from './global-timer-receiver-test-fakes'
-import { HostOpenRetryScheduler } from './host-open-retry-scheduler'
+import { HOST_OPEN_PARK_AFTER_FAILURES, HostOpenRetryScheduler } from './host-open-retry-scheduler'
 
 describe('HostOpenRetryScheduler', () => {
   beforeEach(() => vi.useFakeTimers())
@@ -17,7 +17,7 @@ describe('HostOpenRetryScheduler', () => {
       open
     })
 
-    const delays = [1_000, 2_000, 5_000, 15_000, 30_000, 60_000, 60_000]
+    const delays = [1_000, 2_000, 5_000, 15_000, 30_000]
     for (const [index, delay] of delays.entries()) {
       generation = index + 1
       expect(scheduler.recordFailure('host-1', generation)).toEqual({
@@ -30,6 +30,28 @@ describe('HostOpenRetryScheduler', () => {
       expect(open).toHaveBeenCalledTimes(index + 1)
       expect(open).toHaveBeenLastCalledWith('host-1')
     }
+  })
+
+  it('parks after the failure limit and ignores revival expedites', async () => {
+    const open = vi.fn()
+    const scheduler = new HostOpenRetryScheduler({ canRetry: () => true, open })
+
+    for (let failure = 1; failure < HOST_OPEN_PARK_AFTER_FAILURES; failure++) {
+      scheduler.recordFailure('host-1', 1)
+      expect(scheduler.isParked('host-1')).toBe(false)
+    }
+    scheduler.recordFailure('host-1', 1)
+    expect(scheduler.isParked('host-1')).toBe(true)
+
+    open.mockClear()
+    await vi.advanceTimersByTimeAsync(10 * 60_000)
+    scheduler.expedite('host-1')
+    expect(open).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+
+    // An explicit open (cancel + fresh attempt) or a success clears the park.
+    scheduler.recordSuccess('host-1')
+    expect(scheduler.isParked('host-1')).toBe(false)
   })
 
   it('expedites without forgiving the failure streak', async () => {

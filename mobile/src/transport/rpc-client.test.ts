@@ -618,46 +618,51 @@ describe('mobile rpc-client connection timeout', () => {
       return { client, socket }
     }
 
-    // Pass the fast-attempt cap: 360.5s backoff + 13 × 12s connect timeouts, leaving the first trickle timer armed.
+    // Well past the park point: 6 attempts take ~30s of backoff plus the 12s connect timeouts.
     const PAST_GIVE_UP_CAP_MS = 520_000
 
-    it('keeps trickle-retrying after the give-up cap instead of parking', async () => {
+    it('parks after the attempt cap and stops dialing', async () => {
       const client = connect('ws://desktop.invalid', 'token', 'server-key')
       openAndAuthenticate(mockSockets[0]!)
       mockSockets[0]!.close()
 
       await vi.advanceTimersByTimeAsync(PAST_GIVE_UP_CAP_MS)
       expect(client.getState()).toBe('reconnecting')
-      expect(client.getReconnectAttempt()).toBeGreaterThanOrEqual(12)
+      expect(client.getReconnectAttempt()).toBe(6)
 
-      // A wedged VPN sends no revival nudge, so retry autonomously at trickle cadence (#7824).
+      // Parked hosts generate no traffic of their own, however long they sit.
       const socketsBefore = mockSockets.length
-      await vi.advanceTimersByTimeAsync(102_000)
-      expect(mockSockets.length).toBeGreaterThan(socketsBefore)
+      await vi.advanceTimersByTimeAsync(60 * 60_000)
+      expect(mockSockets.length).toBe(socketsBefore)
+      expect(vi.getTimerCount()).toBe(0)
 
-      // 75s reaches the next dial’s 12s connect window after the previous dial re-armed the 90s trickle.
-      await vi.advanceTimersByTimeAsync(75_000)
-      openAndAuthenticate(mockSockets[mockSockets.length - 1]!)
-      expect(client.getState()).toBe('connected')
-      expect(client.getReconnectAttempt()).toBe(0)
+      // OS revival signals do not wake it either.
+      client.notifyForeground('app-resume')
+      client.notifyForeground('network-change')
+      expect(mockSockets.length).toBe(socketsBefore)
 
       client.close()
     })
 
-    it('restarts a backed-off reconnect loop on foreground without waiting out the trickle', async () => {
+    it('resumes a parked host on an explicit nudge and clears the park on success', async () => {
       const client = connect('ws://desktop.invalid', 'token', 'server-key')
       openAndAuthenticate(mockSockets[0]!)
       mockSockets[0]!.close()
       await vi.advanceTimersByTimeAsync(PAST_GIVE_UP_CAP_MS)
-      expect(client.getReconnectAttempt()).toBe(12)
+      expect(client.getReconnectAttempt()).toBe(6)
 
       const socketsBefore = mockSockets.length
-      client.notifyForeground()
+      client.notifyForeground('focus')
 
       expect(mockSockets.length).toBe(socketsBefore + 1)
       expect(client.getReconnectAttempt()).toBe(0)
       openAndAuthenticate(mockSockets[mockSockets.length - 1]!)
       expect(client.getState()).toBe('connected')
+
+      // A later drop starts a fresh backoff instead of staying parked.
+      mockSockets[mockSockets.length - 1]!.close()
+      await vi.advanceTimersByTimeAsync(600)
+      expect(mockSockets.length).toBe(socketsBefore + 2)
 
       client.close()
     })
@@ -976,7 +981,7 @@ describe('mobile rpc-client connection timeout', () => {
     await vi.advanceTimersByTimeAsync(520_000)
 
     expect(client.getState()).toBe('reconnecting')
-    expect(client.getReconnectAttempt()).toBe(12)
+    expect(client.getReconnectAttempt()).toBe(6)
     await expect(waitingRequestError).resolves.toMatchObject({
       message: 'Connection retry limit reached'
     })

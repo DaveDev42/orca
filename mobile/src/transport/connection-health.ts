@@ -3,10 +3,10 @@ import type { RelayHostReachability } from './relay-host-reachability'
 import type { MobileConnectionPath } from './stable-logical-rpc-client'
 import type { ConnectionState } from './types'
 
-// Absorb brief wake/network failures before warning; keep unreachable aligned with the retry loop’s GIVE_UP_AFTER_ATTEMPTS.
+// Absorb brief wake/network failures before warning; keep unreachable aligned with the retry loop’s RPC_RECONNECT_ATTEMPT_LIMIT, where the host is parked.
 // After a prior success, stale time distinguishes a changed/unreachable host from a transient drop.
 const WARNING_ATTEMPTS = 3
-const UNREACHABLE_ATTEMPTS = 12
+const UNREACHABLE_ATTEMPTS = 6
 const STALE_SINCE_LAST_CONNECT_MS = 60_000
 
 // Repeated Tailscale endpoint failures can require a phone tunnel reset; show that remedy rather than assuming the host moved.

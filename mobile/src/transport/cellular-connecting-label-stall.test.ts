@@ -166,14 +166,14 @@ describe('issue #10119 — what a phone shows while it cannot reach the desktop'
     expect(samples.some((s) => s.state === 'handshaking')).toBe(true)
     expect(samples.some((s) => s.state === 'connected')).toBe(false)
 
-    expect(Math.max(...samples.map((s) => s.attempts))).toBeGreaterThanOrEqual(12)
+    expect(Math.max(...samples.map((s) => s.attempts))).toBeGreaterThanOrEqual(6)
     expect(samples.some((s) => s.label === "Can't connect")).toBe(true)
     expect(samples.some((s) => s.label === "Can't reach desktop")).toBe(true)
 
     const after = labelsAfterFirstEscalation(samples)
     expect(after.every((s) => s.label !== 'Connecting…')).toBe(true)
 
-    // Keep retry counts bounded by backoff/trickle rather than burning a socket every handshake deadline.
+    // Keep retry counts bounded by backoff and parking rather than burning a socket every handshake deadline.
     expect(sockets.length).toBeGreaterThanOrEqual(5)
     expect(sockets.length).toBeLessThan(30)
   })
@@ -182,7 +182,7 @@ describe('issue #10119 — what a phone shows while it cannot reach the desktop'
     carrier = { kind: 'open-then-silent' }
     const samples = observe('ws://relay.example:443', 900_000)
 
-    expect(Math.max(...samples.map((s) => s.attempts))).toBeGreaterThanOrEqual(12)
+    expect(Math.max(...samples.map((s) => s.attempts))).toBeGreaterThanOrEqual(6)
     expect(samples.some((s) => s.label === "Can't reach desktop")).toBe(true)
 
     const after = labelsAfterFirstEscalation(samples)
@@ -201,16 +201,16 @@ describe('issue #10119 — what a phone shows while it cannot reach the desktop'
     expect(after.every((s) => s.label !== 'Connecting…')).toBe(true)
   })
 
-  it('holds "Can\'t reach desktop" through every trickle dial once past the give-up cap', () => {
+  it('holds "Can\'t reach desktop" through every dial once the host is parked', () => {
     carrier = { kind: 'blackhole' }
     const samples = observe('ws://192.168.0.56:6769', 900_000)
 
     const firstUnreachable = samples.findIndex((s) => s.label === "Can't reach desktop")
     expect(firstUnreachable).toBeGreaterThan(0)
 
-    // Keep the unreachable verdict throughout each trickle dial, not only between dials.
+    // Keep the unreachable verdict throughout the final dials and while parked.
     const after = samples.slice(firstUnreachable)
-    expect(after.every((s) => s.attempts >= 12)).toBe(true)
+    expect(after.every((s) => s.attempts >= 6)).toBe(true)
     expect(after.every((s) => s.label === "Can't reach desktop")).toBe(true)
   })
 
@@ -251,7 +251,7 @@ describe('issue #10119 — what a phone shows while it cannot reach the desktop'
     carrier = { kind: 'wedged-open-then-silent' }
     const samples = observe('ws://192.168.0.56:6769', 900_000)
 
-    expect(Math.max(...samples.map((s) => s.attempts))).toBeGreaterThanOrEqual(12)
+    expect(Math.max(...samples.map((s) => s.attempts))).toBeGreaterThanOrEqual(6)
     expect(samples.some((s) => s.label === "Can't reach desktop")).toBe(true)
 
     const after = labelsAfterFirstEscalation(samples)

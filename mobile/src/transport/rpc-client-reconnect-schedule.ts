@@ -1,6 +1,7 @@
 const RECONNECT_DELAYS = [500, 1000, 2000, 4000, 8000, 15_000, 30_000, 60_000]
-export const RPC_RECONNECT_ATTEMPT_LIMIT = 12
-const TRICKLE_RECONNECT_DELAY_MS = 90_000
+// Park after this many failed attempts (~30s of backoff plus dial time). Continuous traffic to an unreachable
+// Tailscale peer can exhaust the iOS VPN client WireGuard buffer pool (tailscale/tailscale#21773).
+export const RPC_RECONNECT_ATTEMPT_LIMIT = 6
 
 type ReconnectScheduleOptions = {
   openConnection: () => void
@@ -11,6 +12,7 @@ type ReconnectScheduleOptions = {
 export class RpcClientReconnectSchedule {
   private attempt = 0
   private timer: ReturnType<typeof setTimeout> | null = null
+  private parked = false
 
   constructor(private readonly options: ReconnectScheduleOptions) {}
 
@@ -20,27 +22,26 @@ export class RpcClientReconnectSchedule {
 
   authenticated(): void {
     this.attempt = 0
+    this.parked = false
+  }
+
+  // Parked hosts stop dialing until redialNow() is called by an explicit user action.
+  isParked(): boolean {
+    return this.parked
   }
 
   schedule(): void {
-    const trickle = this.attempt >= RPC_RECONNECT_ATTEMPT_LIMIT
-    let delayMs: number
-    if (trickle) {
-      delayMs = TRICKLE_RECONNECT_DELAY_MS
+    if (this.attempt >= RPC_RECONNECT_ATTEMPT_LIMIT) {
+      this.parked = true
       this.options.rejectConnectWaiters('Connection retry limit reached')
-    } else {
-      delayMs = RECONNECT_DELAYS[Math.min(this.attempt, RECONNECT_DELAYS.length - 1)]!
-      this.attempt++
+      console.log('[net] reconnect parked', { attempt: this.attempt })
+      this.options.emitLog('Reconnect parked', `Stopped after ${this.attempt} failed attempts`)
+      return
     }
-    console.log('[net] scheduleReconnect', {
-      delayMs,
-      attempt: this.attempt,
-      trickle
-    })
-    this.options.emitLog(
-      `Reconnect scheduled in ${delayMs}ms`,
-      trickle ? `Attempt ${this.attempt} (slow retry)` : `Attempt ${this.attempt}`
-    )
+    const delayMs = RECONNECT_DELAYS[Math.min(this.attempt, RECONNECT_DELAYS.length - 1)]!
+    this.attempt++
+    console.log('[net] scheduleReconnect', { delayMs, attempt: this.attempt })
+    this.options.emitLog(`Reconnect scheduled in ${delayMs}ms`, `Attempt ${this.attempt}`)
     this.timer = setTimeout(() => {
       this.timer = null
       this.options.openConnection()
@@ -49,9 +50,10 @@ export class RpcClientReconnectSchedule {
 
   redialNow(resetAttempts: boolean): void {
     this.cancel()
-    if (resetAttempts) {
+    if (resetAttempts || this.parked) {
       this.attempt = 0
     }
+    this.parked = false
     this.options.openConnection()
   }
 

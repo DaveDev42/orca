@@ -1,15 +1,19 @@
 import { openAuthenticatedDirectEndpoint } from './mobile-direct-endpoint-probe'
 import type { MobileEndpointHysteresis } from './mobile-endpoint-hysteresis'
 import type { RpcClient } from './rpc-client'
+import type { ForegroundNudgeReason } from './types'
 import type { ScheduleTimer } from './timer-scheduler'
 import type { MobileConnectionPath } from './stable-logical-rpc-client'
 
 const DIRECT_PROBE_INTERVAL_MS = 15_000
+// Park after this many consecutive failed probes; probing an unreachable peer is continuous VPN traffic.
+export const DIRECT_PROBE_PARK_AFTER_FAILURES = 4
 
 export class DirectReturnProbe {
   private timer: ReturnType<typeof setTimeout> | null = null
 
   private stopped = false
+  private consecutiveFailures = 0
   private activeProbe: AbortController | null = null
 
   constructor(
@@ -36,13 +40,25 @@ export class DirectReturnProbe {
   ) {}
 
   schedule(delayMs = DIRECT_PROBE_INTERVAL_MS): void {
-    if (this.stopped || !this.hooks.canSchedule() || this.timer) {
+    if (this.stopped || this.isParked() || !this.hooks.canSchedule() || this.timer) {
       return
     }
     this.timer = this.deps.setTimer(() => {
       this.timer = null
       void this.probe()
     }, delayMs)
+  }
+
+  isParked(): boolean {
+    return this.consecutiveFailures >= DIRECT_PROBE_PARK_AFTER_FAILURES
+  }
+
+  // Revival nudges only schedule; an explicit focus (host screen open) first re-arms a parked probe.
+  nudge(reason: ForegroundNudgeReason): void {
+    if (reason === 'focus') {
+      this.consecutiveFailures = 0
+    }
+    this.schedule(0)
   }
 
   clear(): void {
@@ -81,8 +97,10 @@ export class DirectReturnProbe {
       }
       if (!successful) {
         this.hooks.hysteresis.recordDirectFailure(this.deps.now())
+        this.consecutiveFailures++
         return
       }
+      this.consecutiveFailures = 0
       if (!this.hooks.hysteresis.recordDirectSuccess(this.deps.now())) {
         successful.close()
         return

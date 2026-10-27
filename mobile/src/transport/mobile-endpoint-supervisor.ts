@@ -74,7 +74,7 @@ export class MobileEndpointSupervisor {
       isForeground: () => this.backgroundGrace.isForeground(),
       setForeground: (foreground) => this.setForeground(foreground),
       replaceRelay: () => void this.recoverRelay(true, true),
-      scheduleDirectProbe: () => this.directProbe.schedule(0)
+      scheduleDirectProbe: (reason) => this.directProbe.nudge(reason)
     })
     this.leaseRotation = new RelayLeaseRotationTimer(dependencies, () => {
       this.relayRotationPending = true

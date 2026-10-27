@@ -2,10 +2,7 @@ import type { ConnectOptions, RpcClient, SendRequestOptions } from './rpc-client
 import { DirectConnectionLog } from './direct-connection-log'
 import { RpcClientAuthenticationRetry } from './rpc-client-authentication-retry'
 import { RpcClientConnectionState } from './rpc-client-connection-state'
-import {
-  RpcClientReconnectSchedule,
-  RPC_RECONNECT_ATTEMPT_LIMIT
-} from './rpc-client-reconnect-schedule'
+import { RpcClientReconnectSchedule } from './rpc-client-reconnect-schedule'
 import { buildDirectRpcWireRequest, type RpcRequestFrame } from './rpc-envelope-fields'
 import { RpcClientRequestTracker } from './rpc-client-request-tracker'
 import { RpcClientSocketCloseController } from './rpc-client-socket-close-controller'
@@ -170,8 +167,15 @@ export class DirectRpcClient implements RpcClient {
     return this.connectionState.addListener(listener)
   }
 
-  notifyForeground(_reason?: ForegroundNudgeReason): void {
+  notifyForeground(reason?: ForegroundNudgeReason): void {
     if (this.intentionallyClosed) {
+      return
+    }
+    if (this.reconnect.isParked()) {
+      // OS revival signals must not wake a parked host; focus or an unspecified caller is explicit.
+      if (reason !== 'app-resume' && reason !== 'network-change') {
+        this.reconnect.redialNow(true)
+      }
       return
     }
     if (this.getState() === 'connected') {
@@ -192,7 +196,8 @@ export class DirectRpcClient implements RpcClient {
       this.socketClose.forceClose(dialing)
       abandoned = true
     }
-    if (this.getState() === 'reconnecting') {
+    // Abandoning a stale dial can use the last attempt; stay parked then.
+    if (this.getState() === 'reconnecting' && !this.reconnect.isParked()) {
       console.log('[net] foreground — restarting reconnect loop', {
         attempt: this.getReconnectAttempt(),
         hadTimer: this.reconnect.hasTimer()
@@ -308,10 +313,7 @@ export class DirectRpcClient implements RpcClient {
   }
 
   private waitForConnected(timeoutMs?: number): Promise<void> {
-    if (
-      this.getState() === 'reconnecting' &&
-      this.getReconnectAttempt() >= RPC_RECONNECT_ATTEMPT_LIMIT
-    ) {
+    if (this.reconnect.isParked()) {
       return Promise.reject(new Error('Connection retry limit reached'))
     }
     return this.connectionState.waitForConnected(timeoutMs)
