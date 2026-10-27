@@ -110,7 +110,7 @@ export type HostProfile = {
   deviceToken: string
   publicKeyB64: string
   lastConnected: number
-  /** Home auto-connect; only an explicit  opts out, so older records keep connecting. */
+  /** Home auto-connect; only an explicit `false` opts out, so older records keep connecting. */
   autoConnect?: boolean
   /** Relay routing, joined from the overlay; only `setRelayRouting` and pairing write it. */
   relay?: MobileRelayEndpoint
