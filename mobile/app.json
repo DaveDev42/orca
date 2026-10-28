@@ -4,7 +4,7 @@
     "slug": "orca-mobile",
     "version": "0.0.68",
     "orientation": "default",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-dave.png",
     "userInterfaceStyle": "automatic",
     "scheme": "orca-dave",
     "newArchEnabled": true,
@@ -29,7 +29,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.davedev42.orca.mobile",
-      "buildNumber": "1001",
+      "buildNumber": "1005",
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
         "NSLocalNetworkUsageDescription": "Orca connects to the desktop app on your LAN.",
