@@ -4,7 +4,7 @@
     "slug": "orca-mobile",
     "version": "0.0.59",
     "orientation": "default",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-dave.png",
     "userInterfaceStyle": "automatic",
     "scheme": "orca-dave",
     "newArchEnabled": true,
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.davedev42.orca.mobile",
-      "buildNumber": "1002",
+      "buildNumber": "1003",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Orca connects to the desktop app on your LAN.",
         "NSMicrophoneUsageDescription": "Allow Orca to record voice dictation and transcribe it on your paired desktop.",
