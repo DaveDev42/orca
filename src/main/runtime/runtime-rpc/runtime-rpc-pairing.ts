@@ -10,6 +10,7 @@ import { resolveAdvertisedPairingEndpoint } from '../pairing-endpoint'
 import { RuntimeRpcNetworkExposure } from './runtime-rpc-network-exposure'
 import { MobileDesktopRelay } from '../mobile-desktop-relay/mobile-desktop-relay'
 import type { MobileDesktopRelayHosts } from '../mobile-desktop-relay/mobile-desktop-relay-hosts'
+import type { RemoteLeafTerminalEnvironmentClient } from '../remote-leaf-terminal-forwarding'
 import { MobileRelayHostCatalog } from '../mobile-desktop-relay/mobile-relay-host-catalog'
 import { getHostDisplayLabelOverrides } from '../../../shared/host-setting-overrides'
 import { DELEGATED_PHONE_NAME_MAX_CHARS } from '../../../shared/delegated-mobile-device-contract'
@@ -88,6 +89,11 @@ export class RuntimeRpcPairing extends RuntimeRpcNetworkExposure {
 
   setMobileRelayPairingProviderInstaller(install: (() => Promise<unknown>) | null): void {
     this.mobileRelayPairingProviderInstaller = install
+  }
+
+  // Why nullable: in-process test servers have no environment connections to forward over.
+  setRemoteLeafTerminalEnvironmentClient(client: RemoteLeafTerminalEnvironmentClient | null): void {
+    this.remoteLeafTerminalEnvironmentClient = client
   }
 
   setMobileDesktopRelayHosts(hosts: MobileDesktopRelayHosts | null): void {

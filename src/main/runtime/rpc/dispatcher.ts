@@ -31,6 +31,7 @@ import { createDispatcherStreamingFeatureEmitter } from './dispatcher-streaming-
 import { recordRuntimeFeatureInteraction } from './runtime-feature-interaction'
 import type { RpcCallerScope } from './rpc-caller-scope'
 import { admitRpcRequest } from './rpc-request-admission-prologue'
+import { forwardRemoteLeafTerminalUnary } from '../remote-leaf-terminal-forwarding'
 
 export type DispatcherOptions = {
   runtime: OrcaRuntimeService
@@ -172,6 +173,11 @@ export class RpcDispatcher {
   ): Promise<unknown> {
     const { runtime, orchestrationMutations, legacyOrchestration } = this
     const context = rpcContextFromTransport(runtime, request, options, caller)
+    // Why: a `remote:` leaf's PTY lives on its environment; answering locally would act on nothing.
+    const remoteLeaf = await forwardRemoteLeafTerminalUnary(context, request.method, params)
+    if (remoteLeaf.handled) {
+      return remoteLeaf.result
+    }
     // Why: test fakes of the runtime omit the client-hosted browser route.
     const clientHostedBrowser = await (runtime.routeClientHostedBrowserRpc?.(
       request.method,

@@ -21,6 +21,7 @@ import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchest
 import type { OrchestrationSessionCaller } from '../orchestration/orchestration-caller-identity'
 import type { RpcCallerIdentity } from './rpc-caller-identity'
 import type { RpcBinarySender } from './rpc-binary-sender'
+import type { RemoteLeafTerminalEnvironmentClient } from '../remote-leaf-terminal-forwarding'
 import type { RpcMethodPermission } from './rpc-method-permission'
 import type {
   RegisterDeviceKeyParams,
@@ -140,6 +141,8 @@ export type RpcContext = {
     list(): MobileRelayHostsListResult
     worktrees(hostId: string): Promise<MobileRelayHostWorktreesResult>
   }
+  // Why: set only for paired-client sockets on a desktop, so their `remote:` leaves reach the owning environment.
+  remoteLeafTerminals?: RemoteLeafTerminalEnvironmentClient
   // Why: set only for an authenticated runtime-scope device and bound to it, so it manages only its own phones.
   delegatedMobileDevices?: {
     sync(phones: readonly DelegatedPhone[]): DelegatedMobileDeviceSyncResult

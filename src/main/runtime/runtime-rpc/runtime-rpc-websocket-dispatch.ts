@@ -243,6 +243,7 @@ export class RuntimeRpcWebSocketDispatch extends RuntimeRpcMobileDevices {
               }
             : undefined,
         mobileRelayHosts: this.mobileRelayHostCatalog ?? undefined,
+        remoteLeafTerminals: this.remoteLeafTerminalEnvironmentClient ?? undefined,
         delegatedMobileDevices:
           device.scope === 'runtime'
             ? { sync: (phones) => this.syncDelegatedMobileDevices(device.deviceId, phones) }

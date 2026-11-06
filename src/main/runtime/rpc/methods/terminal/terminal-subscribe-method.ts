@@ -8,6 +8,11 @@ import {
 } from './terminal-subscribe-json-and-lease'
 import type { TerminalSubscriptionArgs } from './terminal-subscribe-types'
 import { registerTerminalSubscription } from './terminal-subscription-registration'
+import {
+  RemoteLeafTerminalIdentity,
+  remoteLeafTerminalTargetForPty
+} from '../../../remote-leaf-terminal-forwarding'
+import { forwardRemoteLeafTerminalSubscribe } from '../../../remote-leaf-terminal-subscribe-forwarding'
 
 export const TERMINAL_SUBSCRIBE_METHODS = [
   // Streams live terminal output over WebSocket; mobile clients pass client+viewport for server-side auto-fit.
@@ -17,7 +22,16 @@ export const TERMINAL_SUBSCRIBE_METHODS = [
     params: TerminalSubscribe,
     handler: async (
       params,
-      { runtime, connectionId, requestId, sendBinary, registerBinaryStreamHandler, signal },
+      {
+        runtime,
+        connectionId,
+        requestId,
+        clientId: callerClientId,
+        sendBinary,
+        registerBinaryStreamHandler,
+        remoteLeafTerminals,
+        signal
+      },
       emit
     ) => {
       const isMobile = params.client?.type === 'mobile'
@@ -55,6 +69,23 @@ export const TERMINAL_SUBSCRIBE_METHODS = [
             return
           }
           leaf = { ptyId }
+        }
+        // Why after the mount wait: an unmounted orcad tab gets its `remote:` id from the mount,
+        // which also re-validates the host PTY; publishing saved ids for unmounted tabs could hand out a dead one.
+        const remoteTarget = remoteLeafTerminals
+          ? remoteLeafTerminalTargetForPty(leaf?.ptyId)
+          : null
+        if (remoteTarget && remoteLeafTerminals) {
+          await forwardRemoteLeafTerminalSubscribe({
+            client: remoteLeafTerminals,
+            identity: new RemoteLeafTerminalIdentity(remoteTarget, params.terminal, callerClientId),
+            params,
+            registration,
+            emit,
+            sendBinary,
+            registerBinaryStreamHandler
+          })
+          return
         }
         if (!leaf?.ptyId) {
           const read = await runtime.readTerminal(params.terminal)
