@@ -16,6 +16,7 @@ import type {
   DictationCapture,
   DictationCaptureChunk
 } from '../platform/dictation-capture-contract'
+import type { MobileDictationPrebuffer } from './mobile-dictation-prebuffer'
 import type { MobileDictationPendingAudioBudget } from './mobile-dictation-pending-audio-budget'
 import type { RpcClient } from '../transport/rpc-client'
 
@@ -98,15 +99,31 @@ export function subscribeMobileDictationAudioChunks(
     getClient: () => RpcClient | null
     getActiveId: () => string | null
     isAccepting: () => boolean
+    // Set while the desktop session is still starting: the microphone is live and audio is held here, not sent.
+    getPrebuffer?: () => MobileDictationPrebuffer | null
   },
   queue: Omit<MobileDictationAudioChunkQueue, 'isActive'>
-): { remove: () => void } {
+): { remove: () => void; feed: (chunk: DictationCaptureChunk) => void } {
   // Reuse wiring on the microphone hot path instead of allocating per chunk.
   const chunkQueue = { ...queue, isActive: (id: string) => source.getActiveId() === id }
-  return capture.onChunk((chunk) => {
+  const feed = (chunk: DictationCaptureChunk): void => {
     const client = source.getClient()
     const dictationId = source.getActiveId()
-    if (!client || !dictationId || !source.isAccepting()) {
+    if (!client || !dictationId) {
+      return
+    }
+    const prebuffer = source.getPrebuffer?.()
+    if (prebuffer) {
+      // Lost or overflowing pre-ack audio means the start is too slow for the speech already said; fail like a full send budget.
+      if (chunk.droppedBytes > 0 || !prebuffer.push(chunk.data)) {
+        queue.failActiveDictation(
+          dictationId,
+          new Error(MOBILE_DICTATION_CONNECTION_SLOW_ERROR_MESSAGE)
+        )
+      }
+      return
+    }
+    if (!source.isAccepting()) {
       return
     }
     if (chunk.droppedBytes > 0) {
@@ -118,7 +135,9 @@ export function subscribeMobileDictationAudioChunks(
       return
     }
     enqueueMobileDictationAudioChunk(client, dictationId, chunk, chunkQueue)
-  })
+  }
+  const subscription = capture.onChunk(feed)
+  return { remove: () => subscription.remove(), feed }
 }
 
 export function enqueueMobileDictationAudioChunk(
