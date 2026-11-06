@@ -89,3 +89,39 @@ describe('mirrored editor tab republication', () => {
     ])
   })
 })
+
+describe('mirrored editor tab accumulation across hops', () => {
+  beforeEach(resetWebSessionTabsSyncTestState)
+
+  const markdownTab: RuntimeMobileSessionFileTab = {
+    type: 'file',
+    id: 'host-note-tab',
+    title: 'TODO.md',
+    filePath: '/repo/docs/TODO.md',
+    relativePath: 'docs/TODO.md',
+    language: 'markdown',
+    mode: 'edit',
+    isDirty: false,
+    isActive: true
+  }
+
+  // Issue #31544: every relaunch or host frame used to add one more tab for the same file.
+  it('keeps one mirrored file and publishes none of it over repeated host frames', () => {
+    let state = makeState()
+    for (let hop = 0; hop < 5; hop += 1) {
+      const patch = applyWebSessionTabsSnapshot(
+        state,
+        makeSnapshot([markdownTab], { snapshotVersion: hop + 1 }),
+        ENV,
+        NOW + hop
+      )
+      state = { ...state, ...patch }
+      const published = buildMobileSessionTabSnapshots(makePublicationState(state), false)
+      expect(published.flatMap((snapshot) => snapshot.tabs)).toEqual([])
+    }
+    expect(state.openFiles.filter((file) => file.filePath === markdownTab.filePath)).toHaveLength(1)
+    expect(
+      (state.unifiedTabsByWorktree[WT] ?? []).filter((tab) => tab.contentType === 'editor')
+    ).toHaveLength(1)
+  })
+})
