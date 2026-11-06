@@ -10,8 +10,8 @@ import {
   pruneMobileNativeChatDraftSkills
 } from './mobile-native-chat-draft-inputs'
 import type { NativeChatSkillDiscoverySnapshot } from '../../../../../src/shared/native-chat/input/native-chat-picker-items'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Keyboard, type TextInput, View } from 'react-native'
+import { useRef, useState } from 'react'
+import { type TextInput, View } from 'react-native'
 import type { NativeChatContextUsageSummary } from '../../../../../src/shared/native-chat/native-chat-context-usage-summary'
 import { colors } from '../../../theme/mobile-theme'
 import { useMobileColorScheme } from '../../../theme/use-mobile-color-scheme'
@@ -47,6 +47,8 @@ import {
   type MobileNativeChatMicProps
 } from './MobileNativeChatComposerMic'
 import type { MobileStructuredThreadGoal } from '../../use-mobile-structured-thread-goal'
+import { useMobileNativeChatComposerDeliver } from './use-mobile-native-chat-composer-deliver'
+import { useMobileNativeChatComposerDictationSend } from './use-mobile-native-chat-composer-dictation-send'
 import { useMobileNativeChatComposerGoalMode } from './use-mobile-native-chat-composer-goal-mode'
 
 const NO_FILE_PATHS: string[] = []
@@ -209,80 +211,64 @@ export function MobileNativeChatComposer({
     insertDictation,
     placeCaret: menu.placeCaret
   })
-  const sendingRef = useRef(false)
-  const mountedRef = useRef(true)
-  const sendSurfaceIdRef = useRef(sendSurfaceId)
-  const sendSurfaceGenerationRef = useRef(0)
-  useLayoutEffect(() => {
-    if (sendSurfaceIdRef.current !== sendSurfaceId) {
-      sendSurfaceIdRef.current = sendSurfaceId
-      sendSurfaceGenerationRef.current += 1
-    }
-  }, [sendSurfaceId])
-  const [sending, setSending] = useState(false)
+  const { sending, sendingRef, mountedRef, surfaceGenerationRef, deliver } =
+    useMobileNativeChatComposerDeliver({
+      sendSurfaceId,
+      getSendCompletionGeneration,
+      getComposerEditGeneration,
+      goal,
+      value,
+      onChangeText,
+      onSend,
+      resetCursor: menu.resetCursor,
+      editing: editSession !== undefined
+    })
   const sessionOptionDispatching = sessionOptions?.controller.pendingId != null
   const filesUploading = files.some((file) => file.path === null)
   const attachmentCount = attachments.length + files.length
   // An attachment alone is a valid send (desktop parity), so it rides even with no text.
-  const canSend =
-    (value.trim().length > 0 || attachmentCount > 0) &&
+  const hasContent = value.trim().length > 0 || attachmentCount > 0
+  const sendReady =
     !disabled &&
     !sendDisabled &&
     !sending &&
     !isAttaching &&
     !filesUploading &&
     !sessionOptionDispatching
+  const dictationSend = useMobileNativeChatComposerDictationSend({
+    editing: editSession !== undefined,
+    micActive,
+    micStarting: micStarting ?? false,
+    micProcessing: micProcessing ?? false,
+    sendReady,
+    hasContent,
+    surfaceGenerationRef,
+    mountedRef,
+    sendingRef,
+    deliver
+  })
+  const sendable = sendReady && (hasContent || dictationSend.busy)
+  const canSend = sendable && !dictationSend.awaiting
   const showsStop = mobileNativeChatComposerShowsStop({
     canStop: stop !== null,
     sendBlocked: sendDisabled,
-    canSend,
+    canSend: sendable,
     editing: isAttaching || filesUploading || micActive,
     draft: value,
     attachmentCount
   })
 
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      sendSurfaceGenerationRef.current += 1
-    }
-  }, [])
-
   const handleSend = async (
     intent?: MobileNativeChatSendIntent,
     keepFocus = false
   ): Promise<void> => {
-    if (!canSend || sendingRef.current || goal.consumeBareGoal(value, () => onChangeText(''))) {
+    if (!canSend || sendingRef.current) {
       return
     }
-    sendingRef.current = true
-    setSending(true)
-    const sendSurfaceGeneration = sendSurfaceGenerationRef.current
-    const sendCompletionGeneration = getSendCompletionGeneration()
-    const composerEditGeneration = getComposerEditGeneration()
-    try {
-      // Raw, not trimmed: the send seam owns the wire trim, and a rejection has
-      // to hand the user back exactly what they typed (#14819).
-      const accepted = await goal.send(onSend, value, intent)
-      if (
-        accepted &&
-        mountedRef.current &&
-        sendSurfaceGeneration === sendSurfaceGenerationRef.current &&
-        sendCompletionGeneration === getSendCompletionGeneration() &&
-        composerEditGeneration === getComposerEditGeneration()
-      ) {
-        menu.resetCursor()
-        // Why: the turn is now the agent's — the keyboard would cover the reply.
-        // A rejected send keeps it up so the handed-back draft stays editable.
-        if (!editSession && !keepFocus) {
-          Keyboard.dismiss()
-        }
-      }
-    } finally {
-      sendingRef.current = false
-      setSending(false)
+    if (dictationSend.request(intent, keepFocus)) {
+      return
     }
+    await deliver(intent, keepFocus)
   }
 
   return (

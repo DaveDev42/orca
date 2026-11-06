@@ -10,7 +10,7 @@ import { mobileSessionNativeChatHostOutage } from './native-chat/mobile-native-c
 import { MobileAgentMessageProvider } from './native-chat/transcript/MobileAgentMessageProvider'
 import { useMobileAgentMessageNavigation } from './use-mobile-agent-message-navigation'
 import { MobileNativeChatDictationPreviewContext } from './native-chat/composer/mobile-native-chat-dictation-preview-context'
-import { MobileDictationMeterContext } from './mobile-dictation-meter-context'
+import { MobileDictationProviders } from './mobile-dictation-providers'
 import { resolveMobileNativeChatSessionId } from './native-chat/mobile-native-chat-eligibility'
 import { colors } from '../theme/mobile-theme'
 import { useMobileColorScheme } from '../theme/use-mobile-color-scheme'
@@ -334,7 +334,7 @@ export function MobileSessionActiveContent({
           />
         ))}
         <MobileNativeChatDictationPreviewContext.Provider value={chatDictationPreview}>
-          <MobileDictationMeterContext.Provider value={dictation.meter}>
+          <MobileDictationProviders dictation={dictation} enabled={dictationEnabled}>
             <MobileAgentMessageProvider
               key={JSON.stringify([hostId, executionHost, worktreeId])}
               tabs={controller.sessionTabs}
@@ -380,7 +380,7 @@ export function MobileSessionActiveContent({
                 onOpenAccounts={executionHost === undefined ? openNativeChatAccounts : undefined}
               />
             </MobileAgentMessageProvider>
-          </MobileDictationMeterContext.Provider>
+          </MobileDictationProviders>
         </MobileNativeChatDictationPreviewContext.Provider>
         {toastMessage && (
           <Animated.View pointerEvents="none" style={[styles.toast, toastAnimatedStyle]}>
