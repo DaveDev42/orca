@@ -2861,6 +2861,9 @@
     "tabBar": {
       "tabCount": "{{count}} sekme",
       "hint": "Tüm sekmeleri gösterir"
+    },
+    "keyCommands": {
+      "closeTab": "Sekmeyi kapat"
     }
   },
   "settings": {

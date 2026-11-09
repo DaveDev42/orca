@@ -3246,6 +3246,9 @@
     },
     "orcaCommands": {
       "desktopOnly": "Available in the desktop app"
+    },
+    "keyCommands": {
+      "closeTab": "Close Tab"
     }
   },
   "chat": {

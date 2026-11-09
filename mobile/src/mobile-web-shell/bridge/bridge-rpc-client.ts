@@ -39,7 +39,7 @@ import {
 } from './client-state/bridge-client-errors'
 import { createBridgeInboundFrameReader } from './client-state/bridge-client-inbound-frames'
 import { createBridgeClientNotifications } from './client-state/bridge-client-notifications'
-import { createBridgeClientTerminalKeys } from './client-state/bridge-client-terminal-keys'
+import { createBridgeClientPageKeys } from './client-state/bridge-client-page-keys'
 import { createPageBackConsumers } from './page-lifecycle/page-back-consumers'
 import { BridgeClientRequests } from './client-state/bridge-client-requests'
 import {
@@ -148,7 +148,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
       handshake.stop()
       shellSession.accept(message)
       back.reassert()
-      terminalKeys.reassert()
+      pageKeys.reassert()
     },
     acceptState: (connection) => acceptState(cache.apply(connection)),
     acceptConnectionPath: (connection) => acceptState(cache.applyPath(connection)),
@@ -172,7 +172,8 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
         )
       notifications.notifySwapSafe(safe, round)
     },
-    acceptTerminalKey: (key, inputOwner) => terminalKeys.accept(key, inputOwner)
+    acceptTerminalKey: (key, inputOwner) => pageKeys.terminal.accept(key, inputOwner),
+    acceptKeyCommand: (id) => pageKeys.commands.accept(id)
   })
 
   function receive(json: string): void {
@@ -279,7 +280,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
     isClosed: () => closed,
     hasGrant
   })
-  const terminalKeys = createBridgeClientTerminalKeys(notifications.notifyTerminalKeyRailClaim)
+  const pageKeys = createBridgeClientPageKeys(notifications)
 
   const unsubscribeFromMessages = options.onMessage(receive)
   handshake.start()
@@ -328,7 +329,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
     claimBack: back.claim,
     close,
     ...shellSessionListeners(shellSession),
-    claimTerminalKeyRail: terminalKeys.claim,
+    ...pageKeys.claims,
     getShellSession: shellSession.current,
     nativeRequestRoom: () => bridgePendingRequestCap(true) - requests.size,
     clearRouteParam: (param, value) => posted(routeParamClearFrame(param, value))

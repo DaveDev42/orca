@@ -2935,6 +2935,9 @@
     "tabBar": {
       "tabCount": "Onglets : {{count}}",
       "hint": "Affiche tous les onglets"
+    },
+    "keyCommands": {
+      "closeTab": "Fermer l'onglet"
     }
   },
   "settings": {

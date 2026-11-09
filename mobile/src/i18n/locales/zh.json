@@ -3866,6 +3866,9 @@
     },
     "orcaCommands": {
       "desktopOnly": "可在桌面端使用"
+    },
+    "keyCommands": {
+      "closeTab": "关闭标签页"
     }
   },
   "settings": {

@@ -83,7 +83,8 @@ public class OrcaMobileWebShellModule: Module {
     }
 
     View(OrcaMobileWebShellView.self) {
-      Events("onLoadState", "onBridgeMessage", "onExternalNavigation", "onBackEdgeSwipe")
+      Events(
+        "onLoadState", "onBridgeMessage", "onExternalNavigation", "onBackEdgeSwipe", "onKeyCommand")
 
       Prop("generationDirectory") { (view: OrcaMobileWebShellView, value: String) in
         view.setGenerationDirectory(value)
@@ -99,6 +100,11 @@ public class OrcaMobileWebShellModule: Module {
 
       Prop("backEdgeSwipe") { (view: OrcaMobileWebShellView, value: Bool) in
         view.setBackEdgeSwipe(value)
+      }
+
+      Prop("keyCommands") {
+        (view: OrcaMobileWebShellView, value: [MobileWebShellKeyCommandRecord]) in
+        view.setKeyCommands(value)
       }
 
       AsyncFunction("postBridgeMessage") {

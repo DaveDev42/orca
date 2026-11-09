@@ -2855,6 +2855,9 @@
     "tabBar": {
       "tabCount": "{{count}} 個分頁",
       "hint": "顯示所有分頁"
+    },
+    "keyCommands": {
+      "closeTab": "關閉分頁"
     }
   },
   "settings": {

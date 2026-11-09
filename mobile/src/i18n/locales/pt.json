@@ -3332,6 +3332,9 @@
     "tabBar": {
       "tabCount": "Abas: {{count}}",
       "hint": "Mostra todas as abas"
+    },
+    "keyCommands": {
+      "closeTab": "Fechar aba"
     }
   },
   "settings": {

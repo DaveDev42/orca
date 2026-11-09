@@ -1,6 +1,10 @@
 import type { BridgeTerminalToolbar } from '../bridge/native-capabilities/bridge-terminal-key'
 import { readBridgeExternalLinkUrl } from '../bridge/protocol/bridge-caps'
 import {
+  BRIDGE_KEY_COMMANDS_CLAIM_NOTIFY,
+  type BridgeKeyCommands
+} from '../bridge/native-capabilities/bridge-key-commands'
+import {
   BRIDGE_EXTERNAL_LINK_GRANT,
   BRIDGE_FAULT_GRANT,
   BRIDGE_NAVIGATE_BACK_NOTIFY
@@ -33,6 +37,7 @@ export function createBridgeNotifyForwarder(args: {
     inputOwner?: string,
     toolbar?: BridgeTerminalToolbar
   ) => void
+  onKeyCommandsClaim: (commands: BridgeKeyCommands) => void
 }): (message: NotifyMessage) => void {
   const { options, granted } = args
   const { client, host } = options
@@ -62,6 +67,10 @@ export function createBridgeNotifyForwarder(args: {
     }
     if (message.name === BRIDGE_TERMINAL_KEY_RAIL_CLAIM_NOTIFY) {
       args.onTerminalKeyRailClaim(message.claimed, message.inputOwner, message.toolbar)
+      return
+    }
+    if (message.name === BRIDGE_KEY_COMMANDS_CLAIM_NOTIFY) {
+      args.onKeyCommandsClaim(message.commands)
       return
     }
     if (message.name === 'foreground') {

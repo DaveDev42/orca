@@ -8,7 +8,7 @@ import type { BridgeHapticsKind } from '../native-capabilities/bridge-haptics-no
 import type { BridgeNativeVerb } from '../native-capabilities/bridge-native-verbs'
 import type { PageBackConsumer } from '../page-lifecycle/page-back-consumers'
 import type { BridgeClearableRouteParam } from '../page-lifecycle/bridge-route-update'
-import type { createBridgeClientTerminalKeys } from './bridge-client-terminal-keys'
+import type { createBridgeClientPageKeys } from './bridge-client-page-keys'
 
 export type BridgeRpcClientOptions = {
   send: (json: string) => void
@@ -19,12 +19,8 @@ export type BridgeRpcClientOptions = {
 export type BridgeRpcClient = RpcClient &
   BridgeConnectionPathSource &
   Required<Pick<RpcClient, 'getShellHostStatus'>> &
-  BridgeShellSessionListeners & {
-    /**
-     * Asks the shell to draw its key rail, while a terminal and its key row are on screen, until the
-     * dispose is called; `listener` takes each press. Nothing is sent to a shell without the grant.
-     */
-    claimTerminalKeyRail: ReturnType<typeof createBridgeClientTerminalKeys>['claim']
+  BridgeShellSessionListeners &
+  ReturnType<typeof createBridgeClientPageKeys>['claims'] & {
     getShellSession: () => BridgeShellSession | null
     // False without navigate lets tap handlers fall back safely instead of throwing into uncaught UI callbacks.
     notifyNavigate: (href: string, replace?: boolean) => boolean

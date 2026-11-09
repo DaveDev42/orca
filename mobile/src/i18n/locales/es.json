@@ -2935,6 +2935,9 @@
     "tabBar": {
       "tabCount": "Pestañas: {{count}}",
       "hint": "Muestra todas las pestañas"
+    },
+    "keyCommands": {
+      "closeTab": "Cerrar pestaña"
     }
   },
   "settings": {

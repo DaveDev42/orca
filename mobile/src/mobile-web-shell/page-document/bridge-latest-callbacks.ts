@@ -21,6 +21,7 @@ export function latestBridgeCallbacks(args: { readonly current: MobileWebShellBr
     onPageLocation: (href) => args.current.onPageLocation(href),
     onPageSwapSafe: (safe, round) => args.current.onPageSwapSafe(safe, round),
     onTerminalKeyRailClaim: (claimed, inputOwner, toolbar) =>
-      args.current.onTerminalKeyRailClaim(claimed, inputOwner, toolbar)
+      args.current.onTerminalKeyRailClaim(claimed, inputOwner, toolbar),
+    onKeyCommandsClaim: (commands) => args.current.onKeyCommandsClaim?.(commands)
   } satisfies Partial<BridgeHostOptions>
 }

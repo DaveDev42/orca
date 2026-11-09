@@ -23,7 +23,11 @@ import type { BridgeHapticsKind } from '../bridge/native-capabilities/bridge-hap
 import { createBridgeHost } from '../host-bridge/bridge-host'
 import { latestBridgeCallbacks } from './bridge-latest-callbacks'
 import { usePageAppPresence } from './use-page-app-presence'
-import type { BridgeHost, BridgeNavigateBackOutcome } from '../host-bridge/bridge-host-contract'
+import type {
+  BridgeHost,
+  BridgeHostOptions,
+  BridgeNavigateBackOutcome
+} from '../host-bridge/bridge-host-contract'
 import type { BridgeSessionBack } from '../host-bridge/bridge-host-back'
 import type { BridgeNativeVerb } from '../bridge/native-capabilities/bridge-native-verbs'
 import type { BridgeErrorCapture } from '../bridge/protocol/bridge-error-capture'
@@ -67,6 +71,8 @@ export type MobileWebShellBridgeView = {
   readonly publishTerminalKeyRail: (keys: BridgeTerminalKeyRail) => void
   /** Hands the page one rail press. False with no host, or a page not granted the rail. */
   readonly sendTerminalKey: (key: BridgeTerminalKeyId, inputOwner?: string) => boolean
+  /** Hands the page one press of a claimed chord. False with no host, or an id it does not hold. */
+  readonly sendKeyCommand: BridgeHost['sendKeyCommand']
   /**
    * Hands the mounted host one Back press. False when there is no host, or when the document it
    * serves never said it takes one — the caller then leaves the key to the navigator.
@@ -119,6 +125,8 @@ export type MobileWebShellBridgeArgs = {
     inputOwner?: string,
     toolbar?: BridgeTerminalToolbar
   ) => void
+  /** The chords the page wants registered; empty again on each new document. */
+  onKeyCommandsClaim?: BridgeHostOptions['onKeyCommandsClaim']
   /** The page applied a one-shot route param and asks for it to be erased (ruling 34). */
   onRouteParamClear: (param: BridgeClearableRouteParam, value: string) => void
   onRouteRefused: (issue: string) => void
@@ -322,15 +330,15 @@ export function useMobileWebShellBridge(args: MobileWebShellBridgeArgs): MobileW
       [buildId, client, sessionId, snapshot]
     ),
     sendTerminalKey: useCallback(
-      (key: BridgeTerminalKeyId, inputOwner?: string) => {
-        const mounted = hostRef.current
-        return (
-          mounted !== null &&
-          mounted.sessionId === sessionId &&
-          mounted.host.sendTerminalKey(key, inputOwner)
-        )
-      },
+      (key: BridgeTerminalKeyId, inputOwner?: string) =>
+        hostRef.current?.sessionId === sessionId &&
+        hostRef.current.host.sendTerminalKey(key, inputOwner),
       [buildId, client, sessionId, snapshot]
+    ),
+    sendKeyCommand: useCallback(
+      (id: string) =>
+        hostRef.current?.sessionId === sessionId && hostRef.current.host.sendKeyCommand(id),
+      [sessionId]
     ),
     // Fenced on the session the way inbound frames are, and answering false rather than throwing
     // when there is no host: the caller is a hardware key handler, and a press it cannot forward

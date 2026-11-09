@@ -55,6 +55,7 @@ import {
 } from './page-geometry/page-safe-area-insets'
 import { usePageFoldDivision, usePublishedFoldDivision } from './page-geometry/page-fold-division'
 import { usePublishedShellKeyRail, useShellKeyRail } from './terminal-controls/use-shell-key-rail'
+import { useShellKeyCommands } from './terminal-controls/use-shell-key-commands'
 import { hostProfileUnreadableLine, pageFaultLine } from './diagnostics/shell-lifecycle-log'
 import { recordShellLifecycleLine } from './diagnostics/shell-lifecycle-line-recorder'
 
@@ -152,6 +153,7 @@ export function MobileWebShellScreen({
   })
   const readySessionId = state.kind === 'ready' ? state.sessionId : null
   const keyRail = useShellKeyRail({ sessionId: readySessionId, overlay, routeGrants })
+  const keyCommands = useShellKeyCommands({ sessionId: readySessionId, overlay, routeGrants })
   const {
     snapshot,
     unreadable,
@@ -288,6 +290,7 @@ export function MobileWebShellScreen({
     // A newer build swaps in only on a resume where the page has nothing to lose (no draft, upload or open sheet).
     onPageSwapSafe: reportSwapSafe,
     onTerminalKeyRailClaim: keyRail.reportClaim,
+    onKeyCommandsClaim: keyCommands.reportClaim,
     onRouteParamClear: openTarget.onRouteParamClear,
     onRouteRefused: (issue) => {
       console.warn('[web-shell] refused to open this screen', issue)
@@ -401,6 +404,8 @@ export function MobileWebShellScreen({
         onBridgeMessage={bridge.onBridgeMessage}
         backEdgeSwipe={backClaimed}
         onBackEdgeSwipe={bridge.sendBack}
+        keyCommands={keyCommands.commands}
+        onKeyCommand={(event) => bridge.sendKeyCommand(event.nativeEvent.id)}
         onExternalNavigation={(event) => {
           const target = cancelledShellNavigationTarget(event.nativeEvent.url)
           if (target === null) {

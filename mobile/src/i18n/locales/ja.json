@@ -2858,6 +2858,9 @@
     "tabBar": {
       "tabCount": "{{count}} 個のタブ",
       "hint": "すべてのタブを表示"
+    },
+    "keyCommands": {
+      "closeTab": "タブを閉じる"
     }
   },
   "settings": {

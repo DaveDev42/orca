@@ -3005,6 +3005,9 @@
     "tabBar": {
       "tabCount": "Вкладок: {{count}}",
       "hint": "Показывает все вкладки"
+    },
+    "keyCommands": {
+      "closeTab": "Закрыть вкладку"
     }
   },
   "settings": {

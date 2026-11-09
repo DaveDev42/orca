@@ -2857,6 +2857,9 @@
     "tabBar": {
       "tabCount": "탭 {{count}}개",
       "hint": "모든 탭 표시"
+    },
+    "keyCommands": {
+      "closeTab": "탭 닫기"
     }
   },
   "settings": {

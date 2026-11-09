@@ -2861,6 +2861,9 @@
     "tabBar": {
       "tabCount": "{{count}} Tabs",
       "hint": "Zeigt alle Tabs"
+    },
+    "keyCommands": {
+      "closeTab": "Tab schließen"
     }
   },
   "settings": {

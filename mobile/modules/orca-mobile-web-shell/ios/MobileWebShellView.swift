@@ -8,6 +8,7 @@ final class OrcaMobileWebShellView: ExpoView, MobileWebShellDocumentSink,
   let onBridgeMessage = EventDispatcher()
   let onExternalNavigation = EventDispatcher()
   let onBackEdgeSwipe = EventDispatcher()
+  let onKeyCommand = EventDispatcher()
 
   // The page's own Back: the stack's swipe is off while the page claims Back, and a strip overlay would eat taps.
   private let backEdgePan = UIPanGestureRecognizer()
@@ -16,10 +17,14 @@ final class OrcaMobileWebShellView: ExpoView, MobileWebShellDocumentSink,
   private var generationDirectory = ""
   private var sessionId = ""
   private var bridgeEnabled = false
+  private lazy var keyCommands = MobileWebShellKeyCommands(view: self) { [weak self] id in
+    self?.onKeyCommand(["id": id])
+  }
 
   override func didMoveToWindow() {
     super.didMoveToWindow()
     document?.loadWhenIsolated()
+    keyCommands.refresh()
   }
 
   required init(appContext: AppContext? = nil) {
@@ -80,6 +85,10 @@ final class OrcaMobileWebShellView: ExpoView, MobileWebShellDocumentSink,
 
   func setBridgeEnabled(_ value: Bool) {
     bridgeEnabled = value
+  }
+
+  func setKeyCommands(_ value: [MobileWebShellKeyCommandRecord]) {
+    keyCommands.setCommands(value)
   }
 
   func propsDidUpdate() {
