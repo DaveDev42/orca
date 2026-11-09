@@ -31,7 +31,7 @@ import {
 import type { BridgeHapticsKind } from './bridge-haptics-notify'
 import { createBridgeInboundFrameReader } from './bridge-client-inbound-frames'
 import { createBridgeClientNotifications } from './bridge-client-notifications'
-import { createBridgeClientTerminalKeys } from './bridge-client-terminal-keys'
+import { createBridgeClientPageKeys } from './bridge-client-page-keys'
 import { createPageBackConsumers, type PageBackConsumer } from './page-back-consumers'
 import { BridgeClientRequests } from './bridge-client-requests'
 import { readBridgeRequestFrameOptions, readBridgeRpcEnvelope } from './bridge-client-rpc-envelope'
@@ -71,12 +71,8 @@ export type BridgeRpcClientOptions = {
 export type BridgeRpcClient = RpcClient &
   BridgeConnectionPathSource &
   Required<Pick<RpcClient, 'getShellHostStatus'>> &
-  BridgeShellSessionListeners & {
-    /**
-     * Asks the shell to draw its key rail, while a terminal and its key row are on screen, until the
-     * dispose is called; `listener` takes each press. Nothing is sent to a shell without the grant.
-     */
-    claimTerminalKeyRail: ReturnType<typeof createBridgeClientTerminalKeys>['claim']
+  BridgeShellSessionListeners &
+  ReturnType<typeof createBridgeClientPageKeys>['claims'] & {
     getShellSession: () => BridgeShellSession | null
     // False without navigate lets tap handlers fall back safely instead of throwing into uncaught UI callbacks.
     notifyNavigate: (href: string, replace?: boolean) => boolean
@@ -193,14 +189,15 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
       handshake.stop()
       shellSession.accept(message)
       back.reassert()
-      terminalKeys.reassert()
+      pageKeys.reassert()
     },
     acceptState: (connection) => acceptState(cache.apply(connection)),
     acceptConnectionPath: (connection) => acceptState(cache.applyPath(connection)),
     acceptBack: back.press,
     // Only a page booted before its screen, with no init yet, is parked; the shell answers its ready on adoption.
     acceptParked: handshake.stop,
-    acceptTerminalKey: (key, inputOwner) => terminalKeys.accept(key, inputOwner)
+    acceptTerminalKey: (key, inputOwner) => pageKeys.terminal.accept(key, inputOwner),
+    acceptKeyCommand: (id) => pageKeys.commands.accept(id)
   })
 
   function receive(json: string): void {
@@ -307,7 +304,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
     isClosed: () => closed,
     hasGrant
   })
-  const terminalKeys = createBridgeClientTerminalKeys(notifications.notifyTerminalKeyRailClaim)
+  const pageKeys = createBridgeClientPageKeys(notifications)
 
   const unsubscribeFromMessages = options.onMessage(receive)
   handshake.start()
@@ -353,7 +350,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
     claimBack: back.claim,
     close,
     ...shellSessionListeners(shellSession),
-    claimTerminalKeyRail: terminalKeys.claim,
+    ...pageKeys.claims,
     getShellSession: shellSession.current,
     nativeRequestRoom: () => bridgePendingRequestCap(true) - requests.size,
     clearRouteParam: (param, value) => posted(routeParamClearFrame(param, value))

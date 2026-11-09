@@ -2717,6 +2717,9 @@
     "structuredOpen": {
       "worktreeDeleted": "Çalışma ağacı silindi.",
       "folderWorkspaceRemoved": "Klasör çalışma alanı kaldırıldı."
+    },
+    "keyCommands": {
+      "closeTab": "Sekmeyi kapat"
     }
   },
   "settings": {

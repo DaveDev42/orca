@@ -1,4 +1,9 @@
 import type { BridgeTerminalToolbar } from './bridge-terminal-key'
+import {
+  BRIDGE_KEY_COMMANDS_CLAIM_NOTIFY,
+  BRIDGE_KEY_COMMANDS_GRANT,
+  type BridgeKeyCommands
+} from './bridge-key-commands'
 import type { ForegroundNudgeReason } from '../../transport/connection/connection-state'
 import {
   BRIDGE_EXTERNAL_LINK_GRANT,
@@ -53,6 +58,7 @@ export type BridgeClientNotifications = {
     inputOwner?: string,
     toolbar?: BridgeTerminalToolbar
   ) => void
+  notifyKeyCommandsClaim: (commands: BridgeKeyCommands) => void
 }
 
 export function createBridgeClientNotifications(
@@ -154,6 +160,17 @@ export function createBridgeClientNotifications(
           ...(inputOwner === undefined ? {} : { inputOwner }),
           ...(toolbar === undefined ? {} : { toolbar }),
           claimed
+        })
+      }
+    },
+    // Only to a shell that granted key commands; an older one registers nothing and keeps the chords.
+    notifyKeyCommandsClaim: (commands) => {
+      if (deps.hasGrant(BRIDGE_KEY_COMMANDS_GRANT)) {
+        post({
+          v: BRIDGE_PROTOCOL_VERSION,
+          type: 'notify',
+          name: BRIDGE_KEY_COMMANDS_CLAIM_NOTIFY,
+          commands: [...commands]
         })
       }
     }

@@ -21,6 +21,7 @@ import { createBridgeNotifyForwarder } from './bridge-host-notify'
 import { createBridgeHostRoute } from './bridge-host-route'
 import { pageStorageForReader } from './page-storage-keys'
 import { BRIDGE_TERMINAL_KEY_FRAME } from './bridge/bridge-terminal-key'
+import { createBridgeHostKeyCommands } from './bridge-host-key-commands'
 import { createBridgeVerdictHold, isDesktopBound } from './bridge-host-verdict-hold'
 import type { BridgeHost, BridgeHostOptions } from './bridge-host-contract'
 
@@ -187,13 +188,15 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
     railOwner = claimed ? inputOwner : undefined
     options.onTerminalKeyRailClaim?.(claimed, inputOwner, toolbar)
   }
+  const keyCommands = createBridgeHostKeyCommands(options, send, deliverable)
   const forwardNotify = createBridgeNotifyForwarder({
     options,
     granted,
     initSent: () => initSent,
     route: () => routes.current(),
     onBackClaim: back.readClaim,
-    onTerminalKeyRailClaim: reportRailClaim
+    onTerminalKeyRailClaim: reportRailClaim,
+    onKeyCommandsClaim: keyCommands.report
   })
 
   function settleAll(notify: boolean): void {
@@ -221,6 +224,7 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
       back.readReady()
       // Dropped like the Back claim: a page still showing a terminal claims again on this `init`.
       reportRailClaim(false)
+      keyCommands.report([])
       // Every time it is asked, not once: the page re-asks on a backoff, and each ask is answered
       // with the route the shell holds now. That is the whole repair path for a frame that never
       // arrived (ruling 34) — nothing here waits on one, and nothing retries one.
@@ -268,6 +272,7 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
         serving = false
         back.drop()
         reportRailClaim(false)
+        keyCommands.report([])
         return
     }
   }
@@ -325,6 +330,7 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
       })
       return true
     },
+    sendKeyCommand: keyCommands.send,
     publishColorScheme: (next) => {
       routes.publishColorScheme(next, deliverable())
     },
@@ -336,7 +342,8 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
       ...back.read(),
       ...(pageStorageKeys === null ? {} : { storageKeys: pageStorageKeys }),
       ...(pageReadsConnectionPath ? { connectionPathFrames: true as const } : {}),
-      ...(railClaimed ? { terminalKeyRailClaim: { inputOwner: railOwner } } : {})
+      ...(railClaimed ? { terminalKeyRailClaim: { inputOwner: railOwner } } : {}),
+      ...keyCommands.read()
     }),
     dispose
   }

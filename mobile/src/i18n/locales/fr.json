@@ -2787,6 +2787,9 @@
     "structuredOpen": {
       "worktreeDeleted": "Le worktree a été supprimé.",
       "folderWorkspaceRemoved": "L’espace de travail de type dossier a été retiré."
+    },
+    "keyCommands": {
+      "closeTab": "Fermer l'onglet"
     }
   },
   "settings": {

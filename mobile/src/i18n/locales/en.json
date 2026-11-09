@@ -2860,6 +2860,9 @@
     },
     "usePrTextAction": {
       "updateFailed": "Failed to update pull request."
+    },
+    "keyCommands": {
+      "closeTab": "Close Tab"
     }
   },
   "chat": {

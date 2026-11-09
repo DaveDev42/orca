@@ -15,6 +15,7 @@ import { BridgePageGeometrySchema } from './bridge-page-geometry'
 import { BridgeFoldDivisionSchema } from './bridge-fold-division'
 import { BridgeNotifySchema } from './bridge-notify-envelope'
 import { BRIDGE_BACK_FRAME } from './bridge-page-back'
+import { BRIDGE_KEY_COMMAND_FRAME, BridgeKeyCommandIdSchema } from './bridge-key-commands'
 import {
   BRIDGE_TERMINAL_KEY_FRAME,
   BridgeTerminalKeyIdSchema,
@@ -244,6 +245,12 @@ const BridgeHostMessageSchema = z.union([
     type: z.literal(BRIDGE_TERMINAL_KEY_FRAME),
     key: BridgeTerminalKeyIdSchema,
     inputOwner: z.string().min(1).max(128).optional()
+  }),
+  // One press of a chord the page claimed. Sent only to a page granted key commands.
+  z.object({
+    v: versionSchema,
+    type: z.literal(BRIDGE_KEY_COMMAND_FRAME),
+    id: BridgeKeyCommandIdSchema
   }),
   z.object({
     v: versionSchema,

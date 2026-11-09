@@ -15,6 +15,7 @@ import { WorkspaceServerContext } from '../worktree/workspace-server-context'
 import { useSessionTitleCard } from './tabs/use-session-title-card'
 import { useDetailCardScope } from '../components/use-detail-card-scope'
 import { useShellSideRail } from '../layout/use-shell-side-rail'
+import { useSessionKeyCommands } from '../hardware-keyboard/use-session-key-commands'
 
 export function MobileSessionSurface({ controller }: { controller: MobileSessionController }) {
   useMobileColorScheme()
@@ -27,9 +28,7 @@ export function MobileSessionSurface({ controller }: { controller: MobileSession
   const besideTabs = (layout.isLandscapePhone || sideRail) && hasTabs
   const titleVisible =
     !sideRail || !hasTabs || controller.showConnectionRetry || controller.connectionEscalated
-  // The compact Duo header removes the opener, so its card must yield with it.
-  const obscured = Boolean(
-    !titleVisible ||
+  const sheetOpen = Boolean(
     controller.showHeaderMoreActions ||
     controller.showCreateTabDrawer ||
     controller.showTerminalLayout ||
@@ -49,6 +48,9 @@ export function MobileSessionSurface({ controller }: { controller: MobileSession
     controller.showDictationSetup ||
     controller.deleteKeyTarget != null
   )
+  // The compact Duo header removes the opener, so its card must yield with it.
+  const obscured = !titleVisible || sheetOpen
+  useSessionKeyCommands(controller, sheetOpen)
   const details = useSessionTitleCard(besideTabs, obscured)
   useDetailCardScope({ ...details, obscured })
   // Only a proven local record belongs to this route's desktop or server.

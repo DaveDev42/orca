@@ -45,6 +45,7 @@ import { useReportedShellOverlayLoad, type ShellOverlayLoad } from './shell-over
 import { pageSafeAreaInsets, usePublishedSafeAreaInsets } from './page-safe-area-insets'
 import { usePageFoldDivision, usePublishedFoldDivision } from './page-fold-division'
 import { usePublishedShellKeyRail, useShellKeyRail } from './use-shell-key-rail'
+import { useShellKeyCommands } from './use-shell-key-commands'
 import { hostProfileUnreadableLine, pageFaultLine } from './shell-lifecycle-log'
 import { recordShellLifecycleLine } from './shell-lifecycle-line-recorder'
 
@@ -131,6 +132,7 @@ export function MobileWebShellScreen({
   })
   const readySessionId = state.kind === 'ready' ? state.sessionId : null
   const keyRail = useShellKeyRail({ sessionId: readySessionId, overlay, routeGrants })
+  const keyCommands = useShellKeyCommands({ sessionId: readySessionId, overlay, routeGrants })
   const {
     snapshot,
     unreadable,
@@ -247,6 +249,7 @@ export function MobileWebShellScreen({
         : onPageLocation(href)
     },
     onTerminalKeyRailClaim: keyRail.reportClaim,
+    onKeyCommandsClaim: keyCommands.reportClaim,
     onRouteParamClear: openTarget.onRouteParamClear,
     // Route refusal builds no tree; use document-load-failed for bounded recovery, then a terminal failure. The host logs the specific issue.
     onRouteRefused: (issue) => {
@@ -350,6 +353,8 @@ export function MobileWebShellScreen({
         onBridgeMessage={bridge.onBridgeMessage}
         backEdgeSwipe={backClaimed}
         onBackEdgeSwipe={bridge.sendBack}
+        keyCommands={keyCommands.commands}
+        onKeyCommand={(event) => bridge.sendKeyCommand(event.nativeEvent.id)}
         onExternalNavigation={(event) => {
           const target = cancelledShellNavigationTarget(event.nativeEvent.url)
           if (target === null) {

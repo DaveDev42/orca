@@ -21,7 +21,7 @@ import type { BridgeFoldDivision } from './bridge/bridge-fold-division'
 import type { BridgeHapticsKind } from './bridge/bridge-haptics-notify'
 import { createBridgeHost, type BridgeHost } from './bridge-host'
 import type { BridgeSessionBack } from './bridge-host-back'
-import type { BridgeNavigateBackOutcome } from './bridge-host-contract'
+import type { BridgeHostOptions, BridgeNavigateBackOutcome } from './bridge-host-contract'
 import type { BridgeNativeVerb } from './bridge/bridge-native-verbs'
 import type { BridgeErrorCapture } from './bridge/bridge-error-capture'
 import type { MobileWebShellSessionState } from './mobile-web-shell-session-contract'
@@ -64,6 +64,8 @@ export type MobileWebShellBridgeView = {
   readonly publishTerminalKeyRail: (keys: BridgeTerminalKeyRail) => void
   /** Hands the page one rail press. False with no host, or a page not granted the rail. */
   readonly sendTerminalKey: (key: BridgeTerminalKeyId, inputOwner?: string) => boolean
+  /** Hands the page one press of a claimed chord. False with no host, or an id it does not hold. */
+  readonly sendKeyCommand: BridgeHost['sendKeyCommand']
   /**
    * Hands the mounted host one Back press. False when there is no host, or when the document it
    * serves never said it takes one — the caller then leaves the key to the navigator.
@@ -115,6 +117,8 @@ export type MobileWebShellBridgeArgs = {
     inputOwner?: string,
     toolbar?: BridgeTerminalToolbar
   ) => void
+  /** The chords the page wants registered; empty again on each new document. */
+  onKeyCommandsClaim?: BridgeHostOptions['onKeyCommandsClaim']
   /** The page applied a one-shot route param and asks for it to be erased (ruling 34). */
   onRouteParamClear: (param: BridgeClearableRouteParam, value: string) => void
   onRouteRefused: (issue: string) => void
@@ -203,7 +207,8 @@ export function useMobileWebShellBridge(args: MobileWebShellBridgeArgs): MobileW
       onPageBackClaim: (claimed) => argsRef.current.onPageBackClaim(claimed),
       onPageLocation: (href) => argsRef.current.onPageLocation(href),
       onTerminalKeyRailClaim: (claimed, inputOwner, toolbar) =>
-        argsRef.current.onTerminalKeyRailClaim(claimed, inputOwner, toolbar)
+        argsRef.current.onTerminalKeyRailClaim(claimed, inputOwner, toolbar),
+      onKeyCommandsClaim: (commands) => argsRef.current.onKeyCommandsClaim?.(commands)
     })
     hostRef.current = { sessionId, host }
     // Reset host-owned drop totals on rebuild so a new lower count cannot look like frames being recovered.
@@ -326,15 +331,15 @@ export function useMobileWebShellBridge(args: MobileWebShellBridgeArgs): MobileW
       [buildId, client, sessionId, snapshot]
     ),
     sendTerminalKey: useCallback(
-      (key: BridgeTerminalKeyId, inputOwner?: string) => {
-        const mounted = hostRef.current
-        return (
-          mounted !== null &&
-          mounted.sessionId === sessionId &&
-          mounted.host.sendTerminalKey(key, inputOwner)
-        )
-      },
+      (key: BridgeTerminalKeyId, inputOwner?: string) =>
+        hostRef.current?.sessionId === sessionId &&
+        hostRef.current.host.sendTerminalKey(key, inputOwner),
       [buildId, client, sessionId, snapshot]
+    ),
+    sendKeyCommand: useCallback(
+      (id: string) =>
+        hostRef.current?.sessionId === sessionId && hostRef.current.host.sendKeyCommand(id),
+      [sessionId]
     ),
     // Fenced on the session the way inbound frames are, and answering false rather than throwing
     // when there is no host: the caller is a hardware key handler, and a press it cannot forward

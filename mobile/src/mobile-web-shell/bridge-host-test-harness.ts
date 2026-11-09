@@ -53,6 +53,7 @@ export type Harness = {
   pageReadyCount: () => number
   pagePaintCount: () => number
   backClaims: boolean[]
+  keyCommandClaims: (readonly { id: string }[])[]
   /** Every clear the page asked for, in order. */
   routeParamClears: () => readonly { param: string; value: string }[]
   routeRefusals: string[]
@@ -104,6 +105,7 @@ export function harness(
   const backPops: BridgeNavigateBackOutcome[] = []
   const storageWrites: { key: string; value: string | null }[] = []
   const backClaims: boolean[] = []
+  const keyCommandClaims: (readonly { id: string }[])[] = []
   let pageReadies = 0
   let pagePaints = 0
   const routeParamClears: { param: string; value: string }[] = []
@@ -135,6 +137,7 @@ export function harness(
       pageReadies += 1
     },
     onPageBackClaim: (claimed) => backClaims.push(claimed),
+    onKeyCommandsClaim: (commands) => keyCommandClaims.push(commands),
     onPageLocation: () => {},
     onPagePainted: () => {
       pagePaints += 1
@@ -199,6 +202,7 @@ export function harness(
     pageReadyCount: () => pageReadies,
     pagePaintCount: () => pagePaints,
     backClaims,
+    keyCommandClaims,
     routeParamClears: () => routeParamClears,
     routeRefusals,
     pageFaults,

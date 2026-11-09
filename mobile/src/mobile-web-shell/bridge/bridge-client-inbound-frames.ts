@@ -22,6 +22,7 @@ export type BridgeInboundFramePort = {
   acceptBack: () => void
   acceptParked: () => void
   acceptTerminalKey: (key: BridgeTerminalKeyId, inputOwner?: string) => void
+  acceptKeyCommand: (id: string) => void
 }
 
 function describeStreamFailure(error: unknown): string {
@@ -72,6 +73,9 @@ export function createBridgeInboundFrameReader(
         return
       case 'terminalKey':
         port.acceptTerminalKey(message.key, message.inputOwner)
+        return
+      case 'keyCommand':
+        port.acceptKeyCommand(message.id)
         return
       case 'reply':
         if (!requests.has(message.id)) {

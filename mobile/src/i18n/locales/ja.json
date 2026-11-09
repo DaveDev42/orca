@@ -2713,6 +2713,9 @@
     "structuredOpen": {
       "worktreeDeleted": "ワークツリーは削除されました。",
       "folderWorkspaceRemoved": "フォルダーワークスペースは削除されました。"
+    },
+    "keyCommands": {
+      "closeTab": "タブを閉じる"
     }
   },
   "settings": {

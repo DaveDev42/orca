@@ -8,6 +8,7 @@ import type { BridgePageGeometry } from './bridge/bridge-page-geometry'
 import type { TerminalBacklogEnd, TerminalBacklogTimers } from './bridge-terminal-output-backlog'
 import type { RpcClient } from '../transport/rpc/rpc-client-contract'
 import type { BridgeSessionBack } from './bridge-host-back'
+import type { BridgeKeyCommands } from './bridge/bridge-key-commands'
 import type { BridgeRefusal } from './bridge/bridge-caps'
 import type {
   BridgeColorScheme,
@@ -127,6 +128,9 @@ export type BridgeHostOptions = {
     inputOwner?: string,
     toolbar?: BridgeTerminalToolbar
   ) => void
+  /** The chords the page wants registered now; empty also arrives each time a document starts or
+   *  ends, and the page claims again on the `init` that follows. */
+  onKeyCommandsClaim?: (commands: BridgeKeyCommands) => void
   /**
    * The page applied a one-shot route param and is asking for it to be erased (ruling 34), naming
    * the value it applied. The holder of that param compares before it clears: a tap that has moved
@@ -163,6 +167,11 @@ export type BridgeHost = {
    * which is every page older than it, or when no document holds the view.
    */
   sendTerminalKey: (key: BridgeTerminalKeyId, inputOwner?: string) => boolean
+  /**
+   * Hands the page one press of a chord it claimed. False for an id it does not hold now, which is
+   * every id for a page older than the grant, or when no document holds the view.
+   */
+  sendKeyCommand: (id: string) => boolean
   /**
    * Hands the page one Back press. False when this document never said it takes one, which is
    * every page older than the frame; the caller then leaves the key to the navigator.

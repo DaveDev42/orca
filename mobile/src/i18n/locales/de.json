@@ -2717,6 +2717,9 @@
     "structuredOpen": {
       "worktreeDeleted": "Der Worktree wurde gelöscht.",
       "folderWorkspaceRemoved": "Der Ordner-Arbeitsbereich wurde entfernt."
+    },
+    "keyCommands": {
+      "closeTab": "Tab schließen"
     }
   },
   "settings": {
