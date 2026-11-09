@@ -17,14 +17,14 @@ final class OrcaMobileWebShellView: ExpoView, MobileWebShellDocumentSink,
   private var generationDirectory = ""
   private var sessionId = ""
   private var bridgeEnabled = false
-  private lazy var keyCommands = MobileWebShellKeyCommands(view: self) { [weak self] id in
+  private lazy var shellKeyCommands = MobileWebShellKeyCommands(view: self) { [weak self] id in
     self?.onKeyCommand(["id": id])
   }
 
   override func didMoveToWindow() {
     super.didMoveToWindow()
     document?.loadWhenIsolated()
-    keyCommands.refresh()
+    shellKeyCommands.refresh()
   }
 
   required init(appContext: AppContext? = nil) {
@@ -88,7 +88,7 @@ final class OrcaMobileWebShellView: ExpoView, MobileWebShellDocumentSink,
   }
 
   func setKeyCommands(_ value: [MobileWebShellKeyCommandRecord]) {
-    keyCommands.setCommands(value)
+    shellKeyCommands.setCommands(value)
   }
 
   func propsDidUpdate() {
