@@ -1,0 +1,17 @@
+diff --git a/ios/Current/CameraSessionManager.swift b/ios/Current/CameraSessionManager.swift
+index 9ac259afa1a6136e94883dfb8fd5624034aaa9aa..1057482aecebf63d307a613b9edec59f6d29f86b 100644
+--- a/ios/Current/CameraSessionManager.swift
++++ b/ios/Current/CameraSessionManager.swift
+@@ -415,6 +415,12 @@ class CameraSessionManager: NSObject, DeviceDiscoveryDelegate {
+     let photoOutput = AVCapturePhotoOutput()
+     photoOutput.isLivePhotoCaptureEnabled = false
+     session.beginConfiguration()
++    // iPad Stage Manager / Split View / Slide Over: without this the system interrupts the
++    // session whenever another app is on screen and the preview stays black (iPadOS 16+,
++    // no entitlement needed).
++    if #available(iOS 16.0, *), session.isMultitaskingCameraAccessSupported {
++      session.isMultitaskingCameraAccessEnabled = true
++    }
+     if session.canAddOutput(photoOutput) {
+       session.addOutput(photoOutput)
+       self.photoOutput = photoOutput
