@@ -90,6 +90,7 @@
       "connecting": "Verbindung wird hergestellt…",
       "description": "Ein Kopplungslink vom Desktop wurde geöffnet. Bestätigen, um diesen Desktop zu den Hosts hinzuzufügen.",
       "pairButton": "Koppeln",
+      "address": "Desktop-Adresse: {{host}}",
       "pairingFailed": "Kopplung fehlgeschlagen: {{error}}",
       "pairingLog": "Kopplungsprotokoll",
       "title": "Mit diesem Desktop koppeln?"
@@ -3001,6 +3002,7 @@
       "deleteFailed": "Löschen fehlgeschlagen",
       "dictationDescription": "Text in jeden fokussierten Bereich auf dem Desktop diktieren.",
       "dictationHeading": "DIKTAT",
+      "dictationHeadingOn": "DIKTAT AUF {{name}}",
       "dictationMode": "Diktatmodus",
       "dictationModeDescription": "Umschalten: einmal zum Starten und erneut zum Stoppen drücken. Gedrückt halten: währenddessen diktieren.",
       "dictationModeWithAutoDescription": "Automatisch: Tippen zum Starten und Stoppen; am Computer nimmt das Gedrückthalten des Kürzels auf, bis Sie loslassen. Gedrückt halten: währenddessen diktieren. Umschalten: einmal zum Starten und erneut zum Stoppen drücken.",
