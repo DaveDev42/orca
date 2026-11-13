@@ -69,11 +69,14 @@ function voiceSettingsErrorMessage(t: Translate, error: VoiceSettingsError | nul
 
 export default function VoiceSettingsScreen({
   operations,
+  desktopName = null,
   connecting = false,
   focused,
   onBack
 }: {
   operations: VoiceSettingsOperations | null
+  /** The paired desktop these settings belong to, when more than one could be meant. */
+  desktopName?: string | null
   /** A paired desktop is still dialing, so the screen is loading rather than unpaired. */
   connecting?: boolean
   focused: boolean
@@ -309,7 +312,13 @@ export default function VoiceSettingsScreen({
       ) : (
         <>
           <SettingsSection
-            title={t('settings.voiceSettingsScreen.dictationHeading', 'DICTATION')}
+            title={
+              desktopName
+                ? t('settings.voiceSettingsScreen.dictationHeadingOn', 'DICTATION ON {{name}}', {
+                    name: desktopName.toLocaleUpperCase()
+                  })
+                : t('settings.voiceSettingsScreen.dictationHeading', 'DICTATION')
+            }
             // The segmented control leaves the mode row no room for two lines of explanation.
             footer={
               offersAuto

@@ -4,6 +4,7 @@ import { loadHosts, peekHosts } from '../src/host-catalog/host-store'
 import type { HostProfile } from '../src/host-catalog/host-profile'
 import { useFocusedSettingsHostClients } from '../src/settings/settings-host-client-connections'
 import VoiceSettingsScreen from '../src/settings/voice-settings-screen'
+import { useHostDisplay } from '../src/host-descriptors/use-host-display'
 import { nativeVoiceSettingsOperations } from '../src/settings/native-voice-settings-operations'
 
 export default function NativeVoiceSettingsRoute() {
@@ -30,6 +31,10 @@ export default function NativeVoiceSettingsRoute() {
   if (connected && connected.hostId !== screenHostId) {
     setScreenHostId(connected.hostId)
   }
+  // These are that desktop's settings, so say whose: the first connected pairing is the one edited.
+  const connectedHost = hosts?.find((host) => host.id === connected?.hostId) ?? null
+  const desktopDisplay = useHostDisplay(connectedHost)
+  const desktopName = connectedHost ? desktopDisplay.title : null
   const operations = useMemo(
     () => (client ? nativeVoiceSettingsOperations(client) : null),
     [client]
@@ -39,6 +44,7 @@ export default function NativeVoiceSettingsRoute() {
     <VoiceSettingsScreen
       key={screenHostId}
       operations={operations}
+      desktopName={desktopName}
       connecting={connecting}
       focused={focused}
       onBack={() => router.back()}
