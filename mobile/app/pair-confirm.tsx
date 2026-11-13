@@ -29,6 +29,7 @@ import {
 } from '../src/pairing/pairing-visuals'
 import { triggerSuccess } from '../src/platform/haptics/haptics'
 import { getPairingFailureMessage } from '../src/pairing/pairing-failure-message'
+import { pairingEndpointHost } from '../src/pairing/pairing-endpoint-host'
 
 type Status = 'awaiting-confirm' | 'connecting' | 'error'
 
@@ -62,6 +63,7 @@ function PairConfirmContent({ routeState }: { routeState: PairConfirmRouteState 
   const activePairingAttemptRef = useRef<PreProfilePairingAttempt | null>(null)
 
   const offer = routeState.offer
+  const endpointHost = offer ? pairingEndpointHost(offer.endpoint) : null
   const resolvedStatus =
     status === 'awaiting-confirm' && routeState.kind === 'error' ? 'error' : status
   const resolvedErrorMessage =
@@ -192,6 +194,11 @@ function PairConfirmContent({ routeState }: { routeState: PairConfirmRouteState 
                 'You opened a pairing link from your desktop. Confirm to add it to your hosts.'
               )}
             </Text>
+            {endpointHost ? (
+              <Text style={styles.subtitle}>
+                {t('app.pairConfirm.address', 'Desktop address: {{host}}', { host: endpointHost })}
+              </Text>
+            ) : null}
             <View style={styles.actionStack}>
               <Pressable
                 style={({ pressed }) => [styles.primaryButton, pressed && pressedStyle]}

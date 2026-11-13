@@ -170,6 +170,7 @@
       "connectDesktop": "Connect to a desktop to manage voice settings.",
       "loadFailedMessage": "Failed to load voice settings.",
       "dictationHeading": "DICTATION",
+      "dictationHeadingOn": "DICTATION ON {{name}}",
       "enableDictation": "Enable Voice Dictation",
       "dictationDescription": "Dictate text into any focused pane on your desktop.",
       "dictationMode": "Dictation Mode",
@@ -311,6 +312,7 @@
       "title": "Pair with this desktop?",
       "description": "You opened a pairing link from your desktop. Confirm to add it to your hosts.",
       "pairButton": "Pair",
+      "address": "Desktop address: {{host}}",
       "connecting": "Connecting…",
       "pairingLog": "Pairing log",
       "backToHome": "Back to home"

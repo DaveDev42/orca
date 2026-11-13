@@ -90,6 +90,7 @@
       "connecting": "연결 중…",
       "description": "데스크톱의 페어링 링크를 열었습니다. 확인하면 이 데스크톱이 호스트 목록에 추가됩니다.",
       "pairButton": "페어링",
+      "address": "데스크톱 주소: {{host}}",
       "pairingFailed": "페어링 실패: {{error}}",
       "pairingLog": "페어링 로그",
       "title": "이 데스크톱과 페어링하시겠습니까?"
@@ -3024,6 +3025,7 @@
       "deleteFailed": "삭제 실패",
       "dictationDescription": "데스크톱에서 포커스가 있는 창에 음성으로 텍스트를 입력합니다.",
       "dictationHeading": "받아쓰기",
+      "dictationHeadingOn": "{{name}}의 받아쓰기",
       "dictationMode": "받아쓰기 모드",
       "dictationModeDescription": "토글: 한 번 누르면 받아쓰기를 시작하고, 다시 누르면 중지합니다. 길게 누르기: 누르고 있는 동안 받아쓰기합니다.",
       "dictationModeWithAutoDescription": "자동: 탭하여 시작하고 중지합니다. 컴퓨터에서는 단축키를 길게 누르면 손을 뗄 때까지 녹음합니다. 길게 누르기: 누르고 있는 동안 받아쓰기합니다. 토글: 한 번 누르면 시작하고, 다시 누르면 중지합니다.",

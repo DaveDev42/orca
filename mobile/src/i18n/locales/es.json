@@ -92,6 +92,7 @@
       "connecting": "Conectando…",
       "description": "Has abierto un enlace de emparejamiento desde tu escritorio. Confirma para añadirlo a tus hosts.",
       "pairButton": "Emparejar",
+      "address": "Dirección del escritorio: {{host}}",
       "pairingFailed": "Error de emparejamiento: {{error}}",
       "pairingLog": "Registro de emparejamiento",
       "title": "¿Emparejar con este escritorio?"
@@ -3108,6 +3109,7 @@
       "deleteFailed": "Error al eliminar",
       "dictationDescription": "Dicta texto en cualquier panel que tenga el foco en tu escritorio.",
       "dictationHeading": "DICTADO",
+      "dictationHeadingOn": "DICTADO EN {{name}}",
       "dictationMode": "Modo de dictado",
       "dictationModeDescription": "Alternar: pulsa una vez para iniciar y otra para detener. Mantener pulsado: dicta sin soltar.",
       "dictationModeWithAutoDescription": "Automático: toca para iniciar y detener; en tu ordenador, mantener el atajo graba hasta que lo sueltes. Mantener pulsado: dicta sin soltar. Alternar: pulsa una vez para iniciar y otra para detener.",

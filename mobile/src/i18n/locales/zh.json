@@ -137,6 +137,7 @@
       "connecting": "正在连接…",
       "description": "已打开来自桌面的配对链接。确认后将此桌面添加到主机列表",
       "pairButton": "配对",
+      "address": "桌面地址：{{host}}",
       "pairingFailed": "配对失败：{{error}}",
       "pairingLog": "配对日志",
       "title": "要与此桌面配对吗？"
@@ -4049,6 +4050,7 @@
       "deleteFailed": "删除失败",
       "dictationDescription": "通过听写向桌面上任意获得焦点的窗格输入文本",
       "dictationHeading": "听写",
+      "dictationHeadingOn": "{{name}} 上的听写",
       "dictationMode": "听写模式",
       "dictationModeDescription": "切换：按一次开始，再按一次停止。按住：按住期间进行听写",
       "dictationModeWithAutoDescription": "自动：轻按开始和停止；在电脑上按住快捷键会一直录音，直到松开。按住：按住期间进行听写。切换：按一次开始，再按一次停止。",
