@@ -85,6 +85,7 @@
       "connecting": "Bağlanılıyor…",
       "description": "Masaüstünüzden bir eşleştirme bağlantısı açtınız. Bu masaüstünü sunucu listenize eklemek için onaylayın.",
       "pairButton": "Eşleştir",
+      "address": "Masaüstü adresi: {{host}}",
       "pairingFailed": "Eşleştirme yapılamadı: {{error}}",
       "pairingLog": "Eşleştirme günlüğü",
       "title": "Bu masaüstüyle eşleştirilsin mi?"
@@ -2853,6 +2854,7 @@
       "deleteFailed": "Silinemedi",
       "dictationDescription": "Masaüstünüzde odaktaki herhangi bir bölmeye metin dikte edin.",
       "dictationHeading": "DİKTE",
+      "dictationHeadingOn": "{{name}} ÜZERİNDE DİKTE",
       "dictationMode": "Dikte Modu",
       "dictationModeDescription": "Aç/kapat: başlatmak için bir kez, durdurmak için tekrar basın. Basılı tut: basılı tuttuğunuz sürece dikte edin.",
       "dictationModeWithAutoDescription": "Otomatik: başlatmak ve durdurmak için dokunun; bilgisayarınızda kısayolu basılı tutmak bırakana kadar kaydeder. Basılı tut: basılı tuttuğunuz sürece dikte edin. Aç/kapat: başlatmak için bir kez, durdurmak için tekrar basın.",

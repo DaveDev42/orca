@@ -85,6 +85,7 @@
       "connecting": "接続中…",
       "description": "デスクトップのペアリングリンクを開きました。確認すると、このデスクトップがホスト一覧に追加されます。",
       "pairButton": "ペアリング",
+      "address": "デスクトップのアドレス: {{host}}",
       "pairingFailed": "ペアリングに失敗しました：{{error}}",
       "pairingLog": "ペアリングログ",
       "title": "このデスクトップとペアリングしますか？"
@@ -2849,6 +2850,7 @@
       "deleteFailed": "削除に失敗しました",
       "dictationDescription": "デスクトップでフォーカスされている任意のペインに、音声でテキストを入力できます。",
       "dictationHeading": "ディクテーション",
+      "dictationHeadingOn": "{{name}}のディクテーション",
       "dictationMode": "ディクテーションモード",
       "dictationModeDescription": "トグル：1 回押すと開始し、もう一度押すと停止します。ホールド：押している間だけ音声入力します。",
       "dictationModeWithAutoDescription": "自動：タップで開始と停止。コンピュータではショートカットを押し続けると離すまで録音します。ホールド：押している間だけ音声入力します。トグル：1 回押すと開始し、もう一度押すと停止します。",
