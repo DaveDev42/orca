@@ -2882,6 +2882,13 @@
       "download": "下载到此手机",
       "downloadSize": "约 {{size}} MB",
       "phoneChecking": "正在检查…"
+    },
+    "voiceAutoStop": {
+      "heading": "说完话时",
+      "stopTitle": "安静后停止",
+      "stopSubtitle": "点按模式的听写在约 1.6 秒无声后会自动结束。",
+      "sendTitle": "停止后发送",
+      "sendSubtitle": "听写自动结束且内容已进入输入框后，发送消息。"
     }
   },
   "sourceControl": {

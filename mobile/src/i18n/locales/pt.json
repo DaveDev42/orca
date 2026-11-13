@@ -2960,6 +2960,13 @@
       "download": "Baixar para este celular",
       "downloadSize": "Cerca de {{size}} MB",
       "phoneChecking": "Verificando…"
+    },
+    "voiceAutoStop": {
+      "heading": "QUANDO VOCÊ PARA DE FALAR",
+      "stopTitle": "Parar quando eu ficar em silêncio",
+      "stopSubtitle": "Um ditado no modo toque termina sozinho após cerca de 1,6 segundo de silêncio.",
+      "sendTitle": "Enviar após parar",
+      "sendSubtitle": "Envia a mensagem quando o ditado terminou sozinho e o texto já está na caixa."
     }
   },
   "sourceControl": {

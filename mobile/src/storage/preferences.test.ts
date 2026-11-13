@@ -1,6 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { loadTerminalLinkOpenMode, saveTerminalLinkOpenMode } from './preferences'
+import {
+  loadDictationAutoSend,
+  loadDictationAutoStop,
+  loadTerminalLinkOpenMode,
+  saveDictationAutoStop,
+  saveTerminalLinkOpenMode
+} from './preferences'
 import {
   loadDefaultSessionView,
   loadSessionViewOverrides,
@@ -240,5 +246,36 @@ describe('terminal link open mode preference', () => {
     await Promise.all([firstMount, secondMount])
     await expect(reader).resolves.toBe('orca-browser')
     expect(stored).toBe('orca-browser')
+  })
+})
+
+describe('dictation auto-stop and auto-send switches', () => {
+  beforeEach(() => {
+    stored.clear()
+    vi.mocked(AsyncStorage.getItem)
+      .mockReset()
+      .mockImplementation(async (key) => stored.get(key) ?? null)
+    vi.mocked(AsyncStorage.setItem)
+      .mockReset()
+      .mockImplementation(async (key, value) => {
+        stored.set(key, value)
+      })
+  })
+
+  it('are on when nothing is stored, and off only for a stored off', async () => {
+    expect(await loadDictationAutoStop()).toBe(true)
+    expect(await loadDictationAutoSend()).toBe(true)
+    await saveDictationAutoStop(false)
+    expect(stored.get('orca:dictationAutoStop')).toBe('off')
+    expect(await loadDictationAutoStop()).toBe(false)
+    expect(await loadDictationAutoSend()).toBe(true)
+    await saveDictationAutoStop(true)
+    expect(await loadDictationAutoStop()).toBe(true)
+  })
+
+  it('stay on when the store cannot be read', async () => {
+    vi.mocked(AsyncStorage.getItem).mockRejectedValue(new Error('refused'))
+    expect(await loadDictationAutoStop()).toBe(true)
+    expect(await loadDictationAutoSend()).toBe(true)
   })
 })

@@ -28,3 +28,21 @@ describe('negotiated page storage keys across page and shell versions', () => {
     expect(lastInit(bridge.posted).storage).toEqual({ 'orca:pins:host-a': '["wt-1"]' })
   })
 })
+
+describe('dictation switch keys', () => {
+  it('reach a page that declared them and stay out of one that did not', () => {
+    const storage = { 'orca:dictationAutoStop': 'off', 'orca:dictationAutoSend': 'off' }
+    const declaring = harness({ storage })
+    declaring.host.receive(
+      clientFrame({
+        type: 'ready',
+        storageKeys: ['orca:dictationAutoStop', 'orca:dictationAutoSend']
+      })
+    )
+    expect(lastInit(declaring.posted).storage).toEqual(storage)
+
+    const older = harness({ storage })
+    older.host.receive(clientFrame({ type: 'ready' }))
+    expect(lastInit(older.posted).storage).toEqual({})
+  })
+})

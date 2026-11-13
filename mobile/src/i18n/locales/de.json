@@ -2886,6 +2886,13 @@
       "download": "Für dieses Telefon herunterladen",
       "downloadSize": "Etwa {{size}} MB",
       "phoneChecking": "Wird geprüft…"
+    },
+    "voiceAutoStop": {
+      "heading": "WENN DU AUFHÖRST ZU SPRECHEN",
+      "stopTitle": "Stoppen, wenn ich still werde",
+      "stopSubtitle": "Ein Diktat im Tippmodus endet nach etwa 1,6 Sekunden Stille von selbst.",
+      "sendTitle": "Nach dem Stoppen senden",
+      "sendSubtitle": "Sendet die Nachricht, sobald das Diktat von selbst endete und der Text im Feld steht."
     }
   },
   "sourceControl": {
