@@ -6,6 +6,7 @@ class AudioEngine {
     private var engineConfigChangeObserver: Any?
     private var sessionInterruptionObserver: Any?
     private var mediaServicesResetObserver: Any?
+    private var routeChangeObserver: Any?
 
     public private(set) var voiceIOFormat: AVAudioFormat
     public private(set) var isRecording = false
@@ -49,6 +50,14 @@ class AudioEngine {
                 self?.handleMediaServicesWereReset()
             }
 
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main) { [weak self] _ in
+                guard let self = self, !self.isTornDown else { return }
+                self.preferBuiltInMic()
+            }
+
         self.setupAudioSession()
         do {
             try self.setup()
@@ -70,13 +79,18 @@ class AudioEngine {
         if let observer = mediaServicesResetObserver {
             NotificationCenter.default.removeObserver(observer)
         }
+        if let observer = routeChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     func setupAudioSession() {
         let session = AVAudioSession.sharedInstance()
 
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+            // No .allowBluetooth: that is the hands-free (HFP) profile, and a car that sees it flips from media to a call and back
+            // around every dictation. A2DP keeps the car on media; the phone listens through its own microphone.
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothA2DP])
         } catch {
             print("Could not set the audio category: \(error.localizedDescription)")
         }
@@ -98,6 +112,24 @@ class AudioEngine {
             try session.setActive(true)
         } catch {
             print("Could not set the audio session as active")
+        }
+
+        preferBuiltInMic()
+    }
+
+    // Listen through the phone, not a Bluetooth device: a wired or USB microphone the user plugged in is left as the input.
+    private func preferBuiltInMic() {
+        let session = AVAudioSession.sharedInstance()
+        guard let inputs = session.availableInputs else { return }
+        let external: Set<AVAudioSession.Port> = [.headsetMic, .usbAudio, .lineIn]
+        if inputs.contains(where: { external.contains($0.portType) }) { return }
+        guard let builtIn = inputs.first(where: { $0.portType == .builtInMic }) else { return }
+        // Setting the same input again would raise another route change.
+        if session.currentRoute.inputs.first?.portType == .builtInMic { return }
+        do {
+            try session.setPreferredInput(builtIn)
+        } catch {
+            print("Could not prefer the built-in microphone: \(error.localizedDescription)")
         }
     }
 
