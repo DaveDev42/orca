@@ -3030,6 +3030,13 @@
       "download": "이 휴대폰에 다운로드",
       "downloadSize": "약 {{size}}MB",
       "phoneChecking": "확인 중…"
+    },
+    "voiceAutoStop": {
+      "heading": "말을 멈췄을 때",
+      "stopTitle": "조용해지면 중지",
+      "stopSubtitle": "탭 모드 받아쓰기가 약 1.6초 동안 조용하면 스스로 끝납니다.",
+      "sendTitle": "중지 후 바로 전송",
+      "sendSubtitle": "받아쓰기가 스스로 끝나고 내용이 입력창에 들어가면 메시지를 보냅니다."
     }
   },
   "sourceControl": {

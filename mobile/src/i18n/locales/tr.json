@@ -3034,6 +3034,13 @@
       "download": "Bu telefona indir",
       "downloadSize": "Yaklaşık {{size}} MB",
       "phoneChecking": "Kontrol ediliyor…"
+    },
+    "voiceAutoStop": {
+      "heading": "KONUŞMAYI BIRAKTIĞINIZDA",
+      "stopTitle": "Sustuğumda durdur",
+      "stopSubtitle": "Dokunma modundaki dikte yaklaşık 1,6 saniyelik sessizlikten sonra kendiliğinden biter.",
+      "sendTitle": "Durduktan sonra gönder",
+      "sendSubtitle": "Dikte kendiliğinden bittiğinde ve metin kutuya girdiğinde mesajı gönderir."
     }
   },
   "sourceControl": {

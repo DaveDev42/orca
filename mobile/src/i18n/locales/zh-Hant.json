@@ -3028,6 +3028,13 @@
       "download": "下載到此手機",
       "downloadSize": "約 {{size}} MB",
       "phoneChecking": "正在檢查…"
+    },
+    "voiceAutoStop": {
+      "heading": "說完話時",
+      "stopTitle": "安靜後停止",
+      "stopSubtitle": "點按模式的聽寫在約 1.6 秒無聲後會自動結束。",
+      "sendTitle": "停止後傳送",
+      "sendSubtitle": "聽寫自動結束且內容已進入輸入框後，傳送訊息。"
     }
   },
   "sourceControl": {

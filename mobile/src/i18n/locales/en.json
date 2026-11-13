@@ -227,6 +227,13 @@
       "title": "Shared links",
       "bots": "Bots",
       "description": "Links you’ve published."
+    },
+    "voiceAutoStop": {
+      "heading": "WHEN YOU STOP TALKING",
+      "stopTitle": "Stop when I go quiet",
+      "stopSubtitle": "A tap-mode dictation ends by itself after about 1.6 seconds of silence.",
+      "sendTitle": "Send after stopping",
+      "sendSubtitle": "Sends the message once the dictation ended by itself and its words are in the box."
     }
   },
   "common": {

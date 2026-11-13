@@ -3112,6 +3112,13 @@
       "download": "Télécharger pour ce téléphone",
       "downloadSize": "Environ {{size}} Mo",
       "phoneChecking": "Vérification…"
+    },
+    "voiceAutoStop": {
+      "heading": "QUAND VOUS ARRÊTEZ DE PARLER",
+      "stopTitle": "Arrêter quand je me tais",
+      "stopSubtitle": "Une dictée en mode toucher se termine d’elle-même après environ 1,6 seconde de silence.",
+      "sendTitle": "Envoyer après l’arrêt",
+      "sendSubtitle": "Envoie le message quand la dictée s’est arrêtée d’elle-même et que son texte est dans le champ."
     }
   },
   "sourceControl": {

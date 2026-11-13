@@ -3112,6 +3112,13 @@
       "download": "Descargar para este teléfono",
       "downloadSize": "Unos {{size}} MB",
       "phoneChecking": "Comprobando…"
+    },
+    "voiceAutoStop": {
+      "heading": "CUANDO DEJAS DE HABLAR",
+      "stopTitle": "Detener cuando me quede en silencio",
+      "stopSubtitle": "Un dictado en modo toque termina solo tras unos 1,6 segundos de silencio.",
+      "sendTitle": "Enviar al detenerse",
+      "sendSubtitle": "Envía el mensaje cuando el dictado terminó solo y su texto ya está en el cuadro."
     }
   },
   "sourceControl": {
