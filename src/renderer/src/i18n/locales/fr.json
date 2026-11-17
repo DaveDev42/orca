@@ -21128,6 +21128,7 @@
       "useDaemonActions": {
         "restartFailed": "Impossible de redémarrer le service du terminal.",
         "killAllSessionsDescription": "Termine chaque session de terminal et ses agents, y compris ceux sans onglet ouvert. Le travail non enregistré est perdu.",
+        "killAllServerTabsStayOpen": "Les onglets des serveurs Orca et des ordinateurs associés restent ouverts, et leurs sessions continuent de s'exécuter là-bas. Les terminaux SSH se ferment comme les terminaux locaux.",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

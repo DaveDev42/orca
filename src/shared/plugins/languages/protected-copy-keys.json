@@ -886,6 +886,7 @@
     "components.settings.workspaceCleanup.search.schedule",
     "components.settings.workspaceCleanup.search.stale",
     "components.settings.workspaceCleanup.search.transcripts",
+    "components.shared.useDaemonActions.killAllServerTabsStayOpen",
     "components.shared.useDaemonActions.killAllSessionsDescription",
     "components.shared.useDaemonActions.restartFailed",
     "components.shared.useDaemonActions.someSessionsUnchecked",

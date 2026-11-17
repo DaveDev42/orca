@@ -21629,6 +21629,7 @@
       "useDaemonActions": {
         "restartFailed": "ターミナルサービスを再起動できませんでした。",
         "killAllSessionsDescription": "すべてのターミナルセッションとその Agent を終了します（タブが開いていないものも含む）。未保存の作業は失われます。",
+        "killAllServerTabsStayOpen": "Orca サーバーやペアリングしたコンピューターのタブは開いたままで、そのセッションはそちらで実行を続けます。SSH ターミナルはローカルと同様に閉じられます。",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

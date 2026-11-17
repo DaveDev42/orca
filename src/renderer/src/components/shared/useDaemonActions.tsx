@@ -268,10 +268,13 @@ function getCopy(kind: DaemonActionKind, t: Translate = translate): DaemonAction
   }
   return {
     title: t('auto.components.shared.useDaemonActions.1bbea41a77', 'Kill all terminal sessions?'),
-    description: t(
+    description: `${t(
       'components.shared.useDaemonActions.killAllSessionsDescription',
       'Ends every terminal session and its agents, including ones with no open tab. Unsaved work is lost.'
-    ),
+    )} ${t(
+      'components.shared.useDaemonActions.killAllServerTabsStayOpen',
+      'Tabs from Orca servers and paired computers stay open, and their sessions keep running there. SSH terminals close like local ones.'
+    )}`,
     confirmLabel: t('auto.components.shared.useDaemonActions.confirmKillAll', 'Kill all sessions'),
     busyLabel: t('auto.components.shared.useDaemonActions.busyKilling', 'Killing…')
   }

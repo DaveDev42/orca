@@ -23052,6 +23052,7 @@
       "useDaemonActions": {
         "restartFailed": "Couldn’t restart the terminal service.",
         "killAllSessionsDescription": "Ends every terminal session and its agents, including ones with no open tab. Unsaved work is lost.",
+        "killAllServerTabsStayOpen": "Tabs from Orca servers and paired computers stay open, and their sessions keep running there. SSH terminals close like local ones.",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

@@ -20268,6 +20268,7 @@
       "useDaemonActions": {
         "restartFailed": "터미널 서비스를 다시 시작하지 못했습니다.",
         "killAllSessionsDescription": "열린 탭이 없는 세션을 포함해 모든 터미널 세션과 해당 agent를 종료합니다. 저장하지 않은 작업은 사라집니다.",
+        "killAllServerTabsStayOpen": "Orca 서버와 페어링된 컴퓨터의 탭은 열린 상태로 유지되며, 해당 세션은 그곳에서 계속 실행됩니다. SSH 터미널은 로컬 터미널처럼 닫힙니다.",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

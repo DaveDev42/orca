@@ -22597,6 +22597,7 @@
       "useDaemonActions": {
         "restartFailed": "Não foi possível reiniciar o serviço do terminal.",
         "killAllSessionsDescription": "Encerra todas as sessões de terminal e seus agentes, inclusive as sem aba aberta. O trabalho não salvo é perdido.",
+        "killAllServerTabsStayOpen": "As abas de servidores Orca e computadores pareados permanecem abertas, e suas sessões continuam em execução lá. Os terminais SSH são fechados como os locais.",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

@@ -1,11 +1,9 @@
 import { useAppStore } from '@/store/index'
-import type { AppState } from '@/store/types'
 import { closeTerminalTab } from '../terminal/tab-lifecycle/terminal-tab-actions'
 import type { PrecomputedTerminalCloseState } from '../terminal/tab-lifecycle/terminal-close-target'
 import {
   buildTerminalTabRetirementPlans,
-  type TerminalTabRetirementPlan,
-  type TerminalTabRetirementState
+  type TerminalTabRetirementPlan
 } from '@/store/terminals/retirement/terminal-tab-retirement'
 import { reserveTerminalRetirementTeardowns } from '@/store/terminals/retirement/terminal-retirement-teardown-reservation'
 import { notifyDaemonSessionInventoryInvalidated } from '../status-bar/resources/inventory/daemon-session-inventory-invalidation'

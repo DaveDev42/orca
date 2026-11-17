@@ -21133,6 +21133,7 @@
       "useDaemonActions": {
         "restartFailed": "Terminal hizmeti yeniden başlatılamadı.",
         "killAllSessionsDescription": "Açık sekmesi olmayanlar dahil her terminal oturumunu ve ajanlarını sonlandırır. Kaydedilmemiş çalışmalar kaybolur.",
+        "killAllServerTabsStayOpen": "Orca sunucularının ve eşleştirilmiş bilgisayarların sekmeleri açık kalır ve oturumları orada çalışmaya devam eder. SSH terminalleri yerel terminaller gibi kapatılır.",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

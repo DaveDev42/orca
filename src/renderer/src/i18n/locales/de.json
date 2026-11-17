@@ -20992,6 +20992,7 @@
       "useDaemonActions": {
         "restartFailed": "Der Terminaldienst konnte nicht neu gestartet werden.",
         "killAllSessionsDescription": "Beendet jede Terminalsitzung und ihre Agenten, auch solche ohne geöffneten Tab. Nicht gespeicherte Arbeit geht verloren.",
+        "killAllServerTabsStayOpen": "Tabs von Orca-Servern und gekoppelten Computern bleiben geöffnet, und ihre Sitzungen laufen dort weiter. SSH-Terminals werden wie lokale geschlossen.",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

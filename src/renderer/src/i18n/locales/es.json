@@ -20851,6 +20851,7 @@
       "useDaemonActions": {
         "restartFailed": "No se pudo reiniciar el servicio de terminal.",
         "killAllSessionsDescription": "Termina todas las sesiones de terminal y sus agentes, incluidas las que no tienen una pestaña abierta. Se pierde el trabajo sin guardar.",
+        "killAllServerTabsStayOpen": "Las pestañas de servidores de Orca y equipos vinculados permanecen abiertas, y sus sesiones siguen ejecutándose allí. Las terminales SSH se cierran igual que las locales.",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },

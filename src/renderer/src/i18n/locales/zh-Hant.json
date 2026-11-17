@@ -20674,6 +20674,7 @@
       "useDaemonActions": {
         "restartFailed": "無法重新啟動終端機服務。",
         "killAllSessionsDescription": "結束所有終端機工作階段及其代理程式，包括沒有開啟分頁的工作階段。未儲存的工作將會遺失。",
+        "killAllServerTabsStayOpen": "來自 Orca 伺服器和已配對電腦的分頁會保持開啟，其工作階段會在那裡繼續執行。SSH 終端機會像本機終端機一樣關閉。",
         "someSessionsUnchecked": "Some sessions couldn’t be checked."
       }
     },
