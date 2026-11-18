@@ -6,6 +6,7 @@ class AudioEngine {
     private var engineConfigChangeObserver: Any?
     private var sessionInterruptionObserver: Any?
     private var mediaServicesResetObserver: Any?
+    private var routeChangeObserver: Any?
 
     public private(set) var voiceIOFormat: AVAudioFormat
     public private(set) var isRecording = false
@@ -49,7 +50,22 @@ class AudioEngine {
                 self?.handleMediaServicesWereReset()
             }
 
-        self.setupAudioSession()
+        // Order matters for a Bluetooth car: every route-affecting setting (category, voice processing, graph) is
+        // applied while the session is still inactive, then the session is activated once and the engine started.
+        // Enabling voice processing or reconfiguring the engine after activation bounces HFP and the car flips in
+        // and out of call mode several times before audio is usable.
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main) { notification in
+                // Diagnostic: a clean start logs one route change into the Bluetooth HFP input.
+                let reason = (notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
+                let route = AVAudioSession.sharedInstance().currentRoute
+                let inputs = route.inputs.map { $0.portType.rawValue }.joined(separator: ",")
+                let outputs = route.outputs.map { $0.portType.rawValue }.joined(separator: ",")
+                print("[AudioEngine] route change reason=\(reason) in=[\(inputs)] out=[\(outputs)]")
+            }
+        self.configureAudioSession()
         do {
             try self.setup()
         } catch {
@@ -57,6 +73,7 @@ class AudioEngine {
             tearDown()
             throw error
         }
+        self.activateAudioSession()
         self.start()
     }
 
@@ -70,9 +87,16 @@ class AudioEngine {
         if let observer = mediaServicesResetObserver {
             NotificationCenter.default.removeObserver(observer)
         }
+        if let observer = routeChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
-    func setupAudioSession() {
+    // How long a torn-down session stays active, so back-to-back dictations keep the car in call mode.
+    private static let sessionLingerSeconds: TimeInterval = 2.0
+    private static var pendingDeactivation: DispatchWorkItem?
+
+    func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
 
         do {
@@ -93,9 +117,14 @@ class AudioEngine {
         } catch {
             print("Could not set the preferred sample rate: \(error.localizedDescription)")
         }
+    }
 
+    func activateAudioSession() {
+        // A dictation that follows a recent one reuses the still-active session instead of waiting for it to drop.
+        AudioEngine.pendingDeactivation?.cancel()
+        AudioEngine.pendingDeactivation = nil
         do {
-            try session.setActive(true)
+            try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("Could not set the audio session as active")
         }
@@ -190,13 +219,39 @@ class AudioEngine {
         return isRecording
     }
 
-    func stopRecording(clearInterruptionResume: Bool = true){
+    func stopRecording(clearInterruptionResume: Bool = true, lingerSession: Bool = false){
+        if lingerSession {
+            scheduleSessionDeactivation()
+        } else {
+            deactivateAudioSession()
+        }
+        toggleRecording(false, preservingInterruptionIntent: !clearInterruptionResume)
+    }
+
+    private func deactivateAudioSession() {
+        AudioEngine.pendingDeactivation?.cancel()
+        AudioEngine.pendingDeactivation = nil
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
             print("Could not set the audio session to inactive: \(error)")
         }
-        toggleRecording(false, preservingInterruptionIntent: !clearInterruptionResume)
+    }
+
+    // Engine I/O is already stopped here, so the delayed deactivation cannot hit a busy session. A new engine
+    // activating the session cancels it.
+    private func scheduleSessionDeactivation() {
+        AudioEngine.pendingDeactivation?.cancel()
+        let work = DispatchWorkItem {
+            AudioEngine.pendingDeactivation = nil
+            do {
+                try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            } catch {
+                print("Could not set the audio session to inactive: \(error)")
+            }
+        }
+        AudioEngine.pendingDeactivation = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + AudioEngine.sessionLingerSeconds, execute: work)
     }
 
     func tearDown() {
@@ -204,7 +259,7 @@ class AudioEngine {
         isTornDown = true
         // Stop I/O first; deactivating a session with running I/O returns a busy error.
         avAudioEngine.stop()
-        stopRecording()
+        stopRecording(lingerSession: true)
     }
 
     private func checkEngineIsRunning() {
@@ -246,6 +301,8 @@ class AudioEngine {
     private func handleMediaServicesWereReset() {
         guard !isTornDown else { return }
         self.avAudioEngine.stop()
+        // A media-services reset drops the category too, so rebuild in the same inactive-then-activate order.
+        self.configureAudioSession()
         do {
             try self.setup()
         } catch {
@@ -254,6 +311,7 @@ class AudioEngine {
             onAudioInterruptionCallback?("blocked")
             return
         }
+        self.activateAudioSession()
         self.start()
     }
 
