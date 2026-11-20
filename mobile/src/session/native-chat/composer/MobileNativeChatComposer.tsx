@@ -6,6 +6,7 @@ import {
   focusMobileNativeChatTextDestination,
   pruneMobileNativeChatDraftSkills
 } from './drafts/mobile-native-chat-draft-inputs'
+import { useMobileNativeChatComposerAutoSend } from './dictation/use-mobile-native-chat-composer-auto-send'
 import { MobileNativeChatComposerAllocation } from './field/MobileNativeChatComposerAllocation'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Keyboard, View, type HostInstance, type TextInputInstance } from 'react-native'
@@ -243,6 +244,8 @@ export function MobileNativeChatComposer({
       setSending(false)
     }
   }
+
+  useMobileNativeChatComposerAutoSend(draftScopeKey, !!editSession, value, canSend, handleSend)
 
   const followUp = goal.sendFollowUp(sendFollowUp)
   const headChord = goal.holdsFollowUp ? undefined : steerHead

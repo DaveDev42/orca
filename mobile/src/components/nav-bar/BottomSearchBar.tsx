@@ -49,6 +49,8 @@ type BottomSearchBarProps = {
   hasSearch?: boolean
   editable?: boolean
   accessibilityLabel?: string
+  /** Focuses the field each time this changes from its first value (a hardware-keyboard chord). */
+  focusKey?: number
 }
 
 // Search lives under the thumb on every list screen: a wide field, with a filter button and the primary action beside it.
@@ -65,7 +67,8 @@ export function BottomSearchBar({
   onClear,
   hasSearch,
   editable,
-  accessibilityLabel
+  accessibilityLabel,
+  focusKey
 }: BottomSearchBarProps) {
   useMobileColorScheme()
   const t = useMobileTranslation()
@@ -129,6 +132,8 @@ export function BottomSearchBar({
             showClear={false}
             editable={editable}
             accessibilityLabel={accessibilityLabel}
+            autoFocus={focusKey !== undefined && focusKey > 0}
+            focusKey={focusKey}
             style={styles.field}
           />
         </View>

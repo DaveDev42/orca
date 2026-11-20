@@ -27,6 +27,7 @@ import { useHostProjectSections } from './catalog/use-host-project-sections'
 import { useHostRepoMetadata } from './catalog/use-host-repo-metadata'
 import { peekStoredHost, useHostScreenIdentity } from './identity/use-host-screen-identity'
 import { useHostScreenState } from './use-host-screen-state'
+import { useHostKeyCommands } from '../hardware-keyboard/use-host-key-commands'
 import { useHostViewSettings } from './view-settings/use-host-view-settings'
 import { countActiveWorkspaceFilters } from '../../../src/shared/workspace-view/workspace-row-filters'
 import { useHostWorktreeActions } from './workspace-actions/use-host-worktree-actions'
@@ -176,6 +177,11 @@ export function useHostScreenController({
   )
   const existingWorktreePaths = useMemo(() => state.worktrees.map((w) => w.path), [state.worktrees])
   const activeWorktreeScroll = useActiveWorktreeScroll(sectionsResult.sections, collapsedGroups)
+  // Bumped by Cmd+J; the list's search field takes focus each time it changes.
+  const [searchFocusKey, setSearchFocusKey] = useState(0)
+  useHostKeyCommands(true, sectionsResult.sections, actions.openWorktreeSession, () =>
+    setSearchFocusKey((key) => key + 1)
+  )
 
   return {
     actions,
@@ -208,6 +214,7 @@ export function useHostScreenController({
     relayRecovery,
     routeNotice,
     router,
+    searchFocusKey,
     sectionsResult,
     setDismissedNotice,
     settings,
