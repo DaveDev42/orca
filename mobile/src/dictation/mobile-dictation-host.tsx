@@ -7,9 +7,13 @@ import { useClipboardWriter } from '../platform/clipboard/clipboard'
 import { dictationFailureMessage, isDictationSetupRequiredError } from './mobile-dictation-setup'
 import { useMobileDictationHaptics } from './use-mobile-dictation-haptics'
 import { useMobileDictationSilenceStop } from './use-mobile-dictation-silence-stop'
+import { useMobileDictationAutoStop } from './use-mobile-dictation-auto-stop'
+import { requestMobileDictationAutoSend } from './mobile-dictation-auto-send'
+import { loadDictationAutoSend, loadDictationAutoStop } from '../storage/preferences'
 import { DEFAULT_STOP_AFTER_SILENCE_SECONDS } from '../../../src/shared/speech/dictation/dictation-silence-stop'
 import { insertMobileDictationAway } from './mobile-dictation-away-insert'
 import { nativeChatDictationCopy } from './mobile-session-native-chat-dictation-copy'
+import { forkDictationCopy } from '../fork-i18n/use-fork-translation'
 import { dictationAwayCopy } from './mobile-dictation-away-copy'
 import {
   useMobileDictationAnnouncements,
@@ -84,6 +88,12 @@ export function MobileDictationHostProvider({ children }: { children: ReactNode 
     }
   }, [openOwner])
 
+  // The phone's own switches, read when a dictation starts; on until a stored 'off' says otherwise.
+  const [autoStopEnabled, setAutoStopEnabled] = useState(true)
+  const autoSendEnabledRef = useRef(true)
+  // Set when the speaker's silence ended the dictation, so only that kind of stop sends the words.
+  const endedByQuietRef = useRef(false)
+
   // Say it on the screen that shows the dictation, else in the host's toast (with Open for the dictation it is about).
   // A screen's toast is not read by VoiceOver on the page, so it is spoken too; the host's toast is spoken when it shows.
   const say = (message: string, about?: MobileDictationOwner) => {
@@ -117,11 +127,16 @@ export function MobileDictationHostProvider({ children }: { children: ReactNode 
     worktreeId: owner?.worktreeId,
     onTranscript: (text) => {
       const current = ownerRef.current
+      const sendAfter = endedByQuietRef.current && autoSendEnabledRef.current
+      endedByQuietRef.current = false
       if (!current) {
         return
       }
       const starting = screenFor(screensRef.current, current, true)
       if (starting?.shown() && starting.insert(text)) {
+        if (sendAfter && current.target?.field === 'chat') {
+          requestMobileDictationAutoSend(current.target.scope, text)
+        }
         return
       }
       void insertMobileDictationAway(current, text).then((inserted) => {
@@ -154,6 +169,12 @@ export function MobileDictationHostProvider({ children }: { children: ReactNode 
     stop,
     (message) => say(message)
   )
+
+  useMobileDictationAutoStop(dictation, owner?.dictationMode, autoStopEnabled, () => {
+    endedByQuietRef.current = true
+    say(forkDictationCopy.stoppedAfterQuiet())
+    stop()
+  })
 
   // Screens subscribe to the live dictation; the host's context only changes when its owner or pill does.
   const liveRef = useRef<UseMobileDictationResult>(dictation)
@@ -219,6 +240,13 @@ export function MobileDictationHostProvider({ children }: { children: ReactNode 
   const start = useCallback(
     async (next: MobileDictationOwner) => {
       ownerRef.current = next
+      endedByQuietRef.current = false
+      void Promise.all([loadDictationAutoStop(), loadDictationAutoSend()]).then(
+        ([autoStop, autoSend]) => {
+          setAutoStopEnabled(autoStop)
+          autoSendEnabledRef.current = autoSend
+        }
+      )
       setOwner(next)
       try {
         await startDictation(next.client)

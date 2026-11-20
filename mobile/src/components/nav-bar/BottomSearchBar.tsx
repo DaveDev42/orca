@@ -51,6 +51,8 @@ type BottomSearchBarProps = {
   accessibilityLabel?: string
   /** Pinned under a sheet's page: the sheet insets its sides and rides the keyboard, and the fade is the sheet's colour. */
   inSheet?: boolean
+  /** Focuses the field each time this changes from its first value (a hardware-keyboard chord). */
+  focusKey?: number
 }
 
 // Search lives under the thumb on every list screen: a wide field, with a filter button and the primary action beside it.
@@ -68,7 +70,8 @@ export function BottomSearchBar({
   hasSearch,
   editable,
   accessibilityLabel,
-  inSheet = false
+  inSheet = false,
+  focusKey
 }: BottomSearchBarProps) {
   useMobileColorScheme()
   const t = useMobileTranslation()
@@ -136,6 +139,8 @@ export function BottomSearchBar({
             showClear={false}
             editable={editable}
             accessibilityLabel={accessibilityLabel}
+            autoFocus={focusKey !== undefined && focusKey > 0}
+            focusKey={focusKey}
             style={styles.field}
           />
         </View>

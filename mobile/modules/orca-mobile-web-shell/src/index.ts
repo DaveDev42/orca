@@ -31,6 +31,18 @@ export type OrcaMobileWebShellViewProps = ViewProps & {
   // iOS only: a left-edge swipe fires onBackEdgeSwipe instead of reaching the page. Android has the hardware key.
   backEdgeSwipe?: boolean
   onBackEdgeSwipe?: () => void
+  // iOS only: chords registered as UIKeyCommands on the window's root view controller, with priority
+  // over system behavior, while this view is in a window. Each press fires onKeyCommand with its id.
+  keyCommands?: readonly MobileWebShellKeyCommand[]
+  onKeyCommand?: (event: NativeSyntheticEvent<{ id: string }>) => void
+}
+
+/** One chord as the page claimed it; see bridge-key-commands.ts for the validated wire shape. */
+export type MobileWebShellKeyCommand = {
+  id: string
+  input: string
+  modifiers: readonly ('command' | 'shift' | 'alternate' | 'control')[]
+  title: string
 }
 
 /** What a ref on the view carries. Expo puts the view's functions on the component prototype. */

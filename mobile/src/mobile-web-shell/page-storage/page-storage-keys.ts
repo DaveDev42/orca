@@ -1,3 +1,5 @@
+import { FORK_PAGE_STORAGE_KEYS } from './fork-page-storage-keys'
+
 /**
  * Which of the app's stored keys the page may read and write, and how much of each.
  *
@@ -34,6 +36,7 @@ export const TERMINAL_SETTINGS_STORAGE_KEYS = [
 ] as const
 
 export const PAGE_STORAGE_EXACT_KEYS = [
+  ...FORK_PAGE_STORAGE_KEYS,
   'orca:last-visited-worktree',
   'orca:hostSidebarWidth',
   'orca:hostDockWidth',
@@ -64,6 +67,7 @@ export const PAGE_STORAGE_EXACT_KEYS = [
  * the host sends these only to a page whose `ready` named them in `storageKeys`.
  */
 export const NEGOTIATED_PAGE_STORAGE_KEYS = [
+  ...FORK_PAGE_STORAGE_KEYS,
   'orca:terminalSplitLayout',
   'orca:terminalFontStyle',
   'orca:nativeChatText',
