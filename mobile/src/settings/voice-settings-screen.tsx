@@ -22,6 +22,7 @@ import {
   dictationShortcutModeSettings
 } from '../../../src/shared/speech/dictation/dictation-shortcut-mode'
 import { SettingsNote, SettingsScreen, SettingsSection } from './settings-screen-frame'
+import { VoiceAutoStopSection } from './voice-auto-stop-section'
 import { VoiceTranscribeOnSection, voiceTranscribeOnShown } from './voice-transcribe-on-section'
 
 const POLL_INTERVAL_MS = 1500
@@ -287,6 +288,7 @@ export default function VoiceSettingsScreen({
       }
     >
       <VoiceTranscribeOnSection />
+      <VoiceAutoStopSection first={!voiceTranscribeOnShown()} />
       {showLoading ? (
         <MobileStateView
           loading
@@ -307,7 +309,6 @@ export default function VoiceSettingsScreen({
       ) : (
         <>
           <SettingsSection
-            first={!voiceTranscribeOnShown()}
             title={t('settings.voiceSettingsScreen.dictationHeading', 'DICTATION')}
             // The segmented control leaves the mode row no room for two lines of explanation.
             footer={

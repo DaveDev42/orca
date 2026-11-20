@@ -227,6 +227,13 @@
       "title": "Shared links",
       "bots": "Bots",
       "description": "Links you’ve published."
+    },
+    "voiceAutoStop": {
+      "stopTitle": "Stop when I go quiet",
+      "sendTitle": "Send after stopping",
+      "heading": "WHEN YOU STOP TALKING",
+      "stopSubtitle": "A tap-mode dictation ends by itself after about 1.6 seconds of silence.",
+      "sendSubtitle": "Sends the message once the dictation ended by itself and its words are in the box."
     }
   },
   "common": {
@@ -1001,6 +1008,10 @@
     },
     "identity": {
       "hostNotFound": "Host not found"
+    },
+    "keyCommands": {
+      "openWorkspace": "Workspace {{n}}",
+      "searchWorkspaces": "Search Workspaces"
     }
   },
   "webShell": {
@@ -3304,6 +3315,10 @@
     },
     "orcaCommands": {
       "desktopOnly": "Available in the desktop app"
+    },
+    "keyCommands": {
+      "closeTab": "Close Tab",
+      "selectTab": "Tab {{n}}"
     }
   },
   "chat": {

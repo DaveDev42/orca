@@ -39,6 +39,7 @@ import {
 } from './client-state/bridge-client-errors'
 import { createBridgeInboundFrameReader } from './client-state/bridge-client-inbound-frames'
 import { createBridgeClientNotifications } from './client-state/bridge-client-notifications'
+import { createKeyCommandRegistry } from '../../hardware-keyboard/key-command-registry'
 import { createBridgeClientTerminalKeys } from './client-state/bridge-client-terminal-keys'
 import { createPageBackConsumers } from './page-lifecycle/page-back-consumers'
 import { BridgeClientRequests } from './client-state/bridge-client-requests'
@@ -140,6 +141,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
   const pageDocument: Document | undefined = globalThis.document
   const swapSafety = pageDocument === undefined ? null : createPageSwapSafety(pageDocument)
   const readInboundFrame = createBridgeInboundFrameReader({
+    acceptKeyCommand: (id) => keyCommands.accept(id),
     requests,
     subscriptions,
     report,
@@ -149,6 +151,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
       shellSession.accept(message)
       back.reassert()
       terminalKeys.reassert()
+      keyCommands.reassert()
     },
     acceptState: (connection) => acceptState(cache.apply(connection)),
     acceptConnectionPath: (connection) => acceptState(cache.applyPath(connection)),
@@ -280,6 +283,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
     hasGrant
   })
   const terminalKeys = createBridgeClientTerminalKeys(notifications.notifyTerminalKeyRailClaim)
+  const keyCommands = createKeyCommandRegistry(notifications.notifyKeyCommandsClaim)
 
   const unsubscribeFromMessages = options.onMessage(receive)
   handshake.start()
@@ -329,6 +333,7 @@ export function createBridgeRpcClient(options: BridgeRpcClientOptions): BridgeRp
     close,
     ...shellSessionListeners(shellSession),
     claimTerminalKeyRail: terminalKeys.claim,
+    claimKeyCommands: keyCommands.claim,
     getShellSession: shellSession.current,
     nativeRequestRoom: () => bridgePendingRequestCap(true) - requests.size,
     clearRouteParam: (param, value) => posted(routeParamClearFrame(param, value))
