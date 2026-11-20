@@ -52,6 +52,7 @@ export function HostBottomBar({
         disabled: connState !== 'connected'
       }}
       onCoveredHeightChange={onCoveredHeightChange}
+      focusKey={controller.searchFocusKey}
     />
   )
 }
