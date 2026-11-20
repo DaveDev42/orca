@@ -12,6 +12,7 @@ import {
   DICTATION_SAMPLE_RATE,
   PCM_BYTES_PER_SAMPLE
 } from '../../../src/shared/rpc-contract/speech/speech-params'
+import { createAutoStopVad } from '../dictation/dictation-auto-stop-vad'
 import type { DictationCapture } from '../platform/audio-capture/dictation-capture-contract'
 
 const WINDOW_MS = 50
@@ -32,6 +33,8 @@ export type MobileDictationMeter = {
   readonly stop: () => void
   /** Date.now() when a pushed window last measured as speech; 0 until then. */
   readonly lastSpeechAt: () => number
+  /** Calls the listener once per recording, when the speaker has been quiet long enough after speaking. */
+  readonly onSpeechEnd: (listener: () => void) => () => void
 }
 
 const IDLE_METER: MobileDictationMeterState = { ...DEFAULT_DICTATION_METER, startedAt: 0 }
@@ -41,6 +44,8 @@ type QueuedWindow = { readonly meter: DictationMeterState; readonly durationMs: 
 // Measure the 16-bit PCM the phone already streams, so both shells get a level without a native event crossing the page bridge.
 export function createMobileDictationMeter(): MobileDictationMeter {
   const listeners = new Set<() => void>()
+  const speechEndListeners = new Set<() => void>()
+  const vad = createAutoStopVad()
   let snapshot = IDLE_METER
   let analyzer: DictationMeterAnalyzerState = createDictationMeterAnalyzerState()
   let sampleClockMs = 0
@@ -105,6 +110,7 @@ export function createMobileDictationMeter(): MobileDictationMeter {
       analyzer = createDictationMeterAnalyzerState()
       sampleClockMs = 0
       lastSpeechAt = 0
+      vad.reset()
       creditMs = 0
       lastTickAt = performance.now()
       timer = setInterval(tick, WINDOW_MS)
@@ -127,6 +133,11 @@ export function createMobileDictationMeter(): MobileDictationMeter {
         if (analyzer.isSpeaking) {
           lastSpeechAt = Date.now()
         }
+        if (vad.push(samples, durationMs)) {
+          for (const listener of speechEndListeners) {
+            listener()
+          }
+        }
         queue.push({ meter: toPublicDictationMeterState(analyzer), durationMs })
         queuedMs += durationMs
       }
@@ -138,7 +149,13 @@ export function createMobileDictationMeter(): MobileDictationMeter {
       queue.splice(0, dropped)
     },
     stop,
-    lastSpeechAt: () => lastSpeechAt
+    lastSpeechAt: () => lastSpeechAt,
+    onSpeechEnd: (listener) => {
+      speechEndListeners.add(listener)
+      return () => {
+        speechEndListeners.delete(listener)
+      }
+    }
   }
 }
 
