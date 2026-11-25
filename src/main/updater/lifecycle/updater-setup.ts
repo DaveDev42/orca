@@ -1,4 +1,5 @@
 import { app, powerMonitor } from 'electron'
+import { isUpdaterAvailable, UPDATE_FEED } from '../fork-update-source'
 import type { BrowserWindow } from 'electron'
 import type { ReleaseBuild, ReleaseChannel } from '../../../shared/updater/release-channel'
 import type { ReleaseBuildListOptions } from '../releases/updater-release-build-cache'
@@ -170,7 +171,7 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
       this.sendErrorStatus(`The server update did not complete: ${serveHandoffFailure}`, true)
     }
 
-    if (!app.isPackaged) {
+    if (!isUpdaterAvailable()) {
       return
     }
 
@@ -202,10 +203,7 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
 
     // Security: never re-add a verifyUpdateCodeSignature override — a no-op disables electron-updater's built-in Authenticode check and accepts any installer.
     if (this.activeUpdateSource === 'release') {
-      autoUpdater.setFeedURL({
-        provider: 'generic',
-        url: 'https://github.com/stablyai/orca/releases/latest/download'
-      })
+      autoUpdater.setFeedURL(UPDATE_FEED)
     }
     if (this.autoUpdaterInitialized) {
       return
