@@ -15,6 +15,7 @@ export async function prepareRuntimeEnvironmentBrowserPlacement(
     expectedPairingRevision?: number
     preference: BrowserClientHostPlacementPreference
     enabled: boolean
+    serverRenderedEnvironments?: readonly string[]
     requireStatus?: boolean
   }
 ) {
@@ -25,6 +26,7 @@ export async function prepareRuntimeEnvironmentBrowserPlacement(
     expectedPairingRevision: args.expectedPairingRevision,
     preference: args.preference,
     enabled: args.enabled,
+    serverRenderedEnvironments: args.serverRenderedEnvironments,
     resolveEnvironment: async (selector) => await resolveEnvironment(userDataPath, selector),
     getStatus: async (environmentId) => {
       requireConnected(environmentId)
