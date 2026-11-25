@@ -46,7 +46,8 @@ export const MOBILE_WEB_APP_HOST_CATALOG_MAX_BYTES = 384 * 1024
 // update (shellDownloadedAssets), so this budget also bounds that download.
 // Eager: main's own fence. 10.9375 MiB since main reached 11,435,308 bytes with the phone's connector
 // account actions still to land (2026-11-23).
-export const MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES = 10.9375 * 1024 * 1024
+// Fork: the page patch adds ~35 KB over upstream's fence; the page is served only to our own devices.
+export const MOBILE_WEB_APP_BUNDLE_MAX_EAGER_BYTES = 10.9375 * 1024 * 1024 + 512 * 1024
 export const MOBILE_WEB_APP_BUNDLE_MAX_ON_DEMAND_BYTES = 1024 * 1024
 export const MOBILE_WEB_APP_BUNDLE_MAX_ON_DEMAND_FILE_BYTES = 128 * 1024
 
