@@ -9,6 +9,7 @@ import {
   classifyUnenvelopedCredential,
   type SecretAtRestProtection
 } from '../../shared/secure-storage/secret-at-rest-protection'
+import { readLocalSttServer } from './local-stt-server-config'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -52,6 +53,10 @@ async function readLegacyJsonStoredOpenAiKey(): Promise<StoredOpenAiKey | null> 
 }
 
 export async function hasOpenAiSpeechApiKey(): Promise<boolean> {
+  // A local transcription server (~/.orca/dictation-stt.json) needs no key, so it counts as configured.
+  if (await readLocalSttServer()) {
+    return true
+  }
   // Existence checks avoid macOS keychain prompts during startup/settings refresh.
   return inCredentialFileOrder(`${getOpenAiKeyPath()}.mutation`, () =>
     credentialFileExists(getOpenAiKeyPath())
@@ -60,6 +65,9 @@ export async function hasOpenAiSpeechApiKey(): Promise<boolean> {
 
 /** Check host decryption: orcad may not open a desktop safeStorage key even when its file exists. */
 export async function canReadOpenAiSpeechApiKey(): Promise<boolean> {
+  if (await readLocalSttServer()) {
+    return true
+  }
   if (!(await hasOpenAiSpeechApiKey())) {
     return false
   }
