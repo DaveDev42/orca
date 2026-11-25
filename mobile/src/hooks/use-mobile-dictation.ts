@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useDictationCapture } from '../platform/audio-capture/dictation-capture'
+import { useMobileDictationPrewarm } from './use-mobile-dictation-prewarm'
 import { useOnDeviceSpeech } from '../platform/speech/on-device-speech'
 import { dictationSessionErrorMessage } from '../dictation/mobile-dictation-setup'
 import { useMobileTranslation } from '../i18n/use-mobile-translation'
@@ -40,6 +41,7 @@ export function useMobileDictation(options: UseMobileDictationOptions): UseMobil
   // Both capture seams hold the screen while the microphone is open; native uses the device directly and page uses shell audio verbs.
   const capture = useDictationCapture()
   const speech = useOnDeviceSpeech(removeFillerWords, dictationTerms)
+  useMobileDictationPrewarm(capture, speech, enabled)
   const [status, setStatus] = useState<DictationStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   // A failure whose recording is kept for Retry; cleared by Retry, discard and the next dictation.

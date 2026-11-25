@@ -25,6 +25,7 @@ import type { PendingNativeChatImage } from './attachments/mobile-native-chat-im
 import { mobileNativeChatComposerPasteHandler } from './attachments/mobile-native-chat-composer-paste'
 import { useMobileNativeChatComposerMenu } from './menus/use-mobile-native-chat-composer-menu'
 import { useMobileNativeChatMentionBots } from './menus/use-mobile-native-chat-mention-bots'
+import { prewarmMobileDictation } from '../../../dictation/mobile-dictation-prewarm'
 import { shownDictationPreview } from './menus/mobile-native-chat-bot-mention-display'
 import { mobileNativeChatComposerStyles as styles } from './field/mobile-native-chat-composer-styles'
 import { composerInputStyles as inputStyles } from '../../../components/composer-input/composer-input-styles'
@@ -288,6 +289,8 @@ export function MobileNativeChatComposer({
             }}
             onFocus={() => {
               setFocused(true)
+              // Focus is the earliest sign of a dictation; warm the microphone and recognizer status for it.
+              prewarmMobileDictation()
               if (draftScopeKey) {
                 focusMobileNativeChatTextDestination(draftScopeKey)
               }
