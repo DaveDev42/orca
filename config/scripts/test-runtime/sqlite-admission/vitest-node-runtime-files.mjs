@@ -4,6 +4,10 @@ import { findSqliteRuntimeTests } from './vitest-sqlite-runtime-scan.mjs'
 const NODE_RUNTIME_INCLUDE = [
   // The parse cache persists through node:sqlite.
   'src/main/ai-vault/parse-cache/session-parse-cache-persistence.test.ts',
+  // undici dispatchers and SOCKS tunnels back the Orca account/relay calls in Electron main; Bun's fetch ignores them.
+  'src/main/network/env-proxy-transport.test.ts',
+  // Mocks the `ws` package, which Bun replaces with its built-in WebSocket.
+  'src/main/runtime/mobile-cloud-relay/relay-proxy-agent.test.ts',
   // The relay's backpressure rides on Node's fetch; Bun's fetch reads a body ahead of its reader.
   'src/main/bots/tool-relay/bot-tool-relay.test.ts',
   // A failed write must surface as Node's async stream 'error', as on Electron main's stdio.
