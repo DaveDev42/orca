@@ -12,6 +12,8 @@ class AudioEngine {
     public private(set) var isRecording = false
     private var interruptionIntent = RecordingInterruptionIntent()
     private var isTornDown = false
+    // True once this engine activated the session; cleared whenever something may have deactivated it behind our back.
+    private var sessionActive = false
 
     public var onMicDataCallback: ((Data) -> Void)?
     public var onInputVolumeCallback: ((Float) -> Void)?
@@ -100,7 +102,9 @@ class AudioEngine {
         let session = AVAudioSession.sharedInstance()
 
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+            // One category/mode/options write. Only HFP is needed (the mic is the Bluetooth hands-free input);
+            // allowBluetoothA2DP adds a second Bluetooth profile the car would negotiate for nothing here.
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
         } catch {
             print("Could not set the audio category: \(error.localizedDescription)")
         }
@@ -112,6 +116,7 @@ class AudioEngine {
             print("Could not allow haptics during recording: \(error.localizedDescription)")
         }
 
+        // Still inactive here, so this only seeds the activation below; it is never a renegotiation on a live link.
         do {
             try session.setPreferredSampleRate(voiceIOFormat.sampleRate)
         } catch {
@@ -125,6 +130,7 @@ class AudioEngine {
         AudioEngine.pendingDeactivation = nil
         do {
             try AVAudioSession.sharedInstance().setActive(true)
+            sessionActive = true
         } catch {
             print("Could not set the audio session as active")
         }
@@ -194,8 +200,13 @@ class AudioEngine {
         }
         if val {
             do {
-                // System keyboard dictation can leave an existing engine's session inactive.
-                try AVAudioSession.sharedInstance().setActive(true)
+                // System keyboard dictation can leave an existing engine's session inactive; a warm engine from a
+                // previous dictation is still active, and re-activating it on every start only gives the car a chance
+                // to renegotiate.
+                if !sessionActive || !avAudioEngine.isRunning {
+                    try AVAudioSession.sharedInstance().setActive(true)
+                    sessionActive = true
+                }
                 if !avAudioEngine.isRunning {
                     try avAudioEngine.start()
                 }
@@ -231,6 +242,7 @@ class AudioEngine {
     private func deactivateAudioSession() {
         AudioEngine.pendingDeactivation?.cancel()
         AudioEngine.pendingDeactivation = nil
+        sessionActive = false
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
@@ -277,6 +289,7 @@ class AudioEngine {
 
         switch type {
         case .began:
+            sessionActive = false
             interruptionIntent.began(wasRecording: isRecording)
             self.stopRecording(clearInterruptionResume: false)
             onAudioInterruptionCallback?("began")
@@ -300,6 +313,7 @@ class AudioEngine {
 
     private func handleMediaServicesWereReset() {
         guard !isTornDown else { return }
+        sessionActive = false
         self.avAudioEngine.stop()
         // A media-services reset drops the category too, so rebuild in the same inactive-then-activate order.
         self.configureAudioSession()
