@@ -23,6 +23,7 @@ function setup(options: { permission?: boolean; initialize?: boolean } = {}) {
       return id
     }),
     clearTimer: vi.fn((timer: unknown) => {
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this fake clock only hands out numeric ids from setTimer
       timers.delete(timer as number)
     })
   }
