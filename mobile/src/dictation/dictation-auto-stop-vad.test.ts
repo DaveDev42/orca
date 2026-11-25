@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { AUTO_STOP_SILENCE_MS, createAutoStopVad } from './dictation-auto-stop-vad'
+import {
+  AUTO_STOP_CALIBRATION_MS,
+  AUTO_STOP_NO_SPEECH_MAX_TOTAL_MS,
+  AUTO_STOP_NO_SPEECH_MS,
+  AUTO_STOP_SETTLE_MS,
+  AUTO_STOP_SILENCE_MS,
+  createAutoStopVad
+} from './dictation-auto-stop-vad'
 
 const FRAME_MS = 50
+// Quiet before the first word: the settle skip, the calibration, and a little measured floor.
+const PRELUDE_MS = AUTO_STOP_SETTLE_MS + AUTO_STOP_CALIBRATION_MS + 200
 const FRAME_SAMPLES = 800
 
 // Deterministic pseudo-noise so the tests do not flake.
@@ -99,36 +108,82 @@ const CAR: Scene = { floor: 0.03, speech: 0.14 }
 describe('createAutoStopVad', () => {
   it('ends once after silence that follows speech', () => {
     const { endedAtMs } = run(QUIET, [
-      ['floor', 500],
+      ['floor', PRELUDE_MS],
       ['speech', 2000],
       ['floor', 3000]
     ])
     expect(endedAtMs).not.toBeNull()
     // The speech envelope ends on a word gap, so the quiet is already running a frame or two early.
-    expect(endedAtMs! - 2500).toBeGreaterThanOrEqual(AUTO_STOP_SILENCE_MS - 300)
-    expect(endedAtMs! - 2500).toBeLessThan(AUTO_STOP_SILENCE_MS + 200)
+    expect(endedAtMs! - (PRELUDE_MS + 2000)).toBeGreaterThanOrEqual(AUTO_STOP_SILENCE_MS - 300)
+    expect(endedAtMs! - (PRELUDE_MS + 2000)).toBeLessThan(AUTO_STOP_SILENCE_MS + 200)
   })
 
-  it('does not end before any speech, however long the noise floor lasts', () => {
+  it('ends when nobody speaks for the no-speech window, counted from the end of calibration', () => {
     const { endedAtMs, vad } = run(CAR, [['floor', 60_000]])
-    expect(endedAtMs).toBeNull()
     expect(vad.speechStarted()).toBe(false)
+    expect(endedAtMs).toBe(AUTO_STOP_SETTLE_MS + AUTO_STOP_CALIBRATION_MS + AUTO_STOP_NO_SPEECH_MS)
+  })
+
+  it('does not run the no-speech window while the link still delivers digital zero', () => {
+    const feeder = new Feeder()
+    feeder.noise(0, 8000)
+    expect(feeder.ended).toBe(false)
+    feeder.noise(0.004, AUTO_STOP_NO_SPEECH_MS - 500)
+    expect(feeder.ended).toBe(false)
+    feeder.noise(0.004, 1000)
+    expect(feeder.ended).toBe(true)
+  })
+
+  it('still ends a link that never leaves digital zero, at the total cap', () => {
+    const feeder = new Feeder()
+    feeder.noise(0, AUTO_STOP_NO_SPEECH_MAX_TOTAL_MS + AUTO_STOP_SETTLE_MS + AUTO_STOP_CALIBRATION_MS)
+    expect(feeder.ended).toBe(true)
+  })
+
+  it('does not end a dictation whose first word comes late but inside the window', () => {
+    const feeder = new Feeder()
+    feeder.noise(0.004, PRELUDE_MS)
+    feeder.noise(0.004, 4000)
+    feeder.speech(0.08, 1500)
+    expect(feeder.ended).toBe(false)
+    expect(feeder.vad.speechStarted()).toBe(true)
+  })
+
+  it('ignores the link-up burst at the very start when it measures the floor', () => {
+    const feeder = new Feeder()
+    // 300 ms of loud link noise, then a quiet cabin: calibrating on the burst would hide a quiet speaker.
+    feeder.noise(0.05, AUTO_STOP_SETTLE_MS)
+    feeder.noise(0.004, 600)
+    feeder.speech(0.08, 1500)
+    expect(feeder.vad.speechStarted()).toBe(true)
+    feeder.noise(0.004, 3000)
+    expect(feeder.ended).toBe(true)
+  })
+
+  it('does not start speech on cabin noise that returns after a digital-zero gap the fast floor fell into', () => {
+    const feeder = new Feeder()
+    feeder.noise(0.02, PRELUDE_MS)
+    // The link drops to zero (the fast floor falls to its minimum), then the same cabin noise comes back:
+    // 0.03 is voiced against that floor, but it is not twice what the cabin sounded like a moment ago.
+    feeder.noise(0, 400)
+    feeder.noise(0.03, 450)
+    expect(feeder.vad.speechStarted()).toBe(false)
   })
 
   it('ends after speech over a loud car noise floor', () => {
     const { endedAtMs, vad } = run(CAR, [
-      ['floor', 500],
+      ['floor', PRELUDE_MS],
       ['speech', 3000],
       ['floor', 3000]
     ])
     expect(vad.speechStarted()).toBe(true)
     expect(endedAtMs).not.toBeNull()
-    expect(endedAtMs! - 3500).toBeLessThan(AUTO_STOP_SILENCE_MS + 300)
+    expect(endedAtMs! - (PRELUDE_MS + 3000)).toBeLessThan(AUTO_STOP_SILENCE_MS + 300)
   })
 
   it('keeps going through pauses shorter than the silence window', () => {
     const { endedAtMs } = run(CAR, [
-      ['floor', 500],
+      ['floor', PRELUDE_MS],
       ['speech', 1000],
       ['floor', 1200],
       ['speech', 1000],
@@ -140,17 +195,18 @@ describe('createAutoStopVad', () => {
 
   it('does not take a short click for speech', () => {
     const { endedAtMs, vad } = run(QUIET, [
-      ['floor', 500],
+      ['floor', PRELUDE_MS],
       ['speech', 100],
       ['floor', 6000]
     ])
     expect(vad.speechStarted()).toBe(false)
-    expect(endedAtMs).toBeNull()
+    // The click is no speech, so the no-speech window ends the dictation.
+    expect(endedAtMs).not.toBeNull()
   })
 
   it('does not let a brief bump reset the silence timer', () => {
     const { endedAtMs } = run(CAR, [
-      ['floor', 500],
+      ['floor', PRELUDE_MS],
       ['speech', 2000],
       ['floor', 800],
       ['speech', 50],
@@ -173,7 +229,7 @@ describe('createAutoStopVad', () => {
 
   it('still ends when the road gets much louder after speech', () => {
     const road = new Feeder()
-    road.noise(0.01, 500)
+    road.noise(0.01, PRELUDE_MS)
     road.speech(0.08, 1500)
     // A tunnel: 4x the calibrated floor, steady, from the moment speech stops.
     road.noise(0.04, 5000)
@@ -197,23 +253,23 @@ describe('createAutoStopVad', () => {
     }
   )
 
-  it('does not take call-link noise alone for speech, nor end on it', () => {
+  it('does not take call-link noise alone for speech; the no-speech window ends it', () => {
     const feeder = new Feeder()
     feeder.noise(0, 1500)
     feeder.noise(0.03, 20_000)
     expect(feeder.vad.speechStarted()).toBe(false)
-    expect(feeder.ended).toBe(false)
+    expect(feeder.ended).toBe(true)
   })
 
   it('reports the end only once and can be reset', () => {
     const feeder = new Feeder()
-    feeder.noise(0.004, 500)
+    feeder.noise(0.004, PRELUDE_MS)
     feeder.speech(0.08, 1000)
     feeder.noise(0.004, 5000)
     expect(feeder.ends).toBe(1)
     feeder.vad.reset()
     expect(feeder.vad.speechStarted()).toBe(false)
-    feeder.noise(0.004, 500)
+    feeder.noise(0.004, PRELUDE_MS)
     feeder.speech(0.08, 1000)
     feeder.noise(0.004, 3000)
     expect(feeder.ends).toBe(2)
