@@ -19,5 +19,10 @@ export const BUNDLED_MAIN_DEPENDENCIES = new Set([
   'hast-util-from-html-isomorphic',
   // Windows NSIS copies app.asar before external resources; bootstrap must not race resources/node_modules.
   'zod',
-  'semver'
+  'semver',
+  // Relay/account proxy transport: bundled so an out/ swap into a stock install needs no extra node_modules.
+  'undici',
+  'socks',
+  'socks-proxy-agent',
+  'https-proxy-agent'
 ])
