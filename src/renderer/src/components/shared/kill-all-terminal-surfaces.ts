@@ -7,6 +7,8 @@ import {
   type TerminalTabRetirementPlan,
   type TerminalTabRetirementState
 } from '@/store/terminals/retirement/terminal-tab-retirement'
+import { resolveTerminalCloseRoute } from '@/lib/workspace/ownership/terminal-close-route'
+import { isWebRuntimeSessionActive } from '@/runtime/web-session-tabs-sync/identity/web-runtime-session-environment'
 import { reserveTerminalRetirementTeardowns } from '@/store/terminals/retirement/terminal-retirement-teardown-reservation'
 import { notifyDaemonSessionInventoryInvalidated } from '../status-bar/resources/inventory/daemon-session-inventory-invalidation'
 
@@ -65,15 +67,23 @@ export function snapshotKillAllTerminalSurfaceIds(
   state: KillAllTerminalSurfaceState = useAppStore.getState()
 ): string[] {
   const targetIds = new Set<string>()
-  for (const tabs of Object.values(state.tabsByWorktree)) {
-    for (const tab of tabs) {
-      targetIds.add(tab.id)
+  // Why: tabs mirrored from a paired desktop close through the remote host; Kill All must stay local.
+  const addIfLocal = (worktreeId: string, terminalTabId: string): void => {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the route reads only tab, pty and host fields that this state type carries at runtime.
+    const route = resolveTerminalCloseRoute(state as AppState, worktreeId, terminalTabId)
+    if (!isWebRuntimeSessionActive(route?.runtimeEnvironmentId)) {
+      targetIds.add(terminalTabId)
     }
   }
-  for (const tabs of Object.values(state.unifiedTabsByWorktree)) {
+  for (const [worktreeId, tabs] of Object.entries(state.tabsByWorktree)) {
+    for (const tab of tabs) {
+      addIfLocal(worktreeId, tab.id)
+    }
+  }
+  for (const [worktreeId, tabs] of Object.entries(state.unifiedTabsByWorktree)) {
     for (const tab of tabs) {
       if (tab.contentType === 'terminal') {
-        targetIds.add(tab.entityId)
+        addIfLocal(worktreeId, tab.entityId)
       }
     }
   }
