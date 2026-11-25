@@ -1,5 +1,6 @@
 import {
   addExpoTwoWayAudioEventListener,
+  getMicrophonePermissionsAsync,
   initialize,
   requestMicrophonePermissionsAsync,
   speechFeed,
@@ -7,9 +8,11 @@ import {
   toggleRecording
 } from '@orca/expo-two-way-audio'
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
+import { AppState } from 'react-native'
 import { BRIDGE_AUDIO_INTERRUPTIONS } from '../../mobile-web-shell/bridge/native-capabilities/bridge-audio-verbs'
 import { createMicrophoneScreenLock } from './microphone-screen-lock'
 import type { NativeAudioEngine } from './native-audio'
+import { createWarmAudioSession } from './warm-audio-session'
 
 // Isolate device imports so tests can inject engines without loading a device-only JSI binding.
 
@@ -24,6 +27,24 @@ export const nativeMicrophoneScreenLock = createMicrophoneScreenLock(
   MICROPHONE_SCREEN_LOCK_TAG
 )
 
+// One warm engine for the page bridge and the native dictation host, so a prewarm from either serves both.
+export const nativeWarmAudioSession = createWarmAudioSession({
+  initialize,
+  toggleRecording,
+  tearDown,
+  hasMicrophonePermission: async () => (await getMicrophonePermissionsAsync()).granted,
+  onBackground: (handler) => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') {
+        handler()
+      }
+    })
+    return () => subscription.remove()
+  },
+  setTimer: (run, ms) => setTimeout(run, ms),
+  clearTimer: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>)
+})
+
 function readInterruption(data: string): (typeof BRIDGE_AUDIO_INTERRUPTIONS)[number] | null {
   return BRIDGE_AUDIO_INTERRUPTIONS.find((kind) => kind === data) ?? null
 }
@@ -35,14 +56,12 @@ export const nativeAudioDeviceEngine: NativeAudioEngine = {
     return permission.granted ? 'granted' : permission.canAskAgain ? 'undetermined' : 'denied'
   },
   open: async (sampleRate) => ({
-    opened: sampleRate === NATIVE_AUDIO_DEVICE_SAMPLE_RATE && (await initialize()),
+    opened: sampleRate === NATIVE_AUDIO_DEVICE_SAMPLE_RATE && (await nativeWarmAudioSession.open()),
     sampleRate: NATIVE_AUDIO_DEVICE_SAMPLE_RATE
   }),
-  begin: () => toggleRecording(true),
-  end: () => {
-    toggleRecording(false)
-    tearDown()
-  },
+  begin: () => nativeWarmAudioSession.begin(),
+  // Mute and keep the engine warm: dropping it dropped a Bluetooth car out of call mode on every dictation.
+  end: () => nativeWarmAudioSession.end(),
   screenLock: nativeMicrophoneScreenLock,
   onMicrophoneData: (handler) =>
     addExpoTwoWayAudioEventListener('onMicrophoneData', (event) => {
