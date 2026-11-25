@@ -14,7 +14,7 @@ on:
       mac_runner:
         description: macOS runner label
         required: false
-        default: macos-14
+        default: macos-15
         type: string
 
 permissions:
