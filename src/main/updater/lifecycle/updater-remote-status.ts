@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { isUpdaterAvailable } from '../fork-update-source'
 import { translateMain } from '../../i18n/main-i18n'
 import type { UpdateCheckOptions, UpdateStatus } from '../../../shared/updater/update-status-types'
 import type {
@@ -17,7 +18,7 @@ export abstract class UpdaterRemoteStatus extends UpdaterNudge {
   }
 
   protected getRemoteServerUpdateSupport(): RemoteServerUpdateSupport {
-    if (!app.isPackaged) {
+    if (!isUpdaterAvailable()) {
       return {
         installMode: this.updateInstallMode,
         automatic: false,

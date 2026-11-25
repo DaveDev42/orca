@@ -1,7 +1,9 @@
 import { net } from 'electron'
 import { parse } from 'yaml'
 
-const RELEASES_DOWNLOAD_BASE = 'https://github.com/stablyai/orca/releases/download'
+import { UPDATE_RELEASE_REPO } from '../fork-update-source'
+
+const RELEASES_DOWNLOAD_BASE = `https://github.com/${UPDATE_RELEASE_REPO}/releases/download`
 export const FETCH_TIMEOUT_MS = 5000
 
 export function getReleaseDownloadUrl(tag: string): string {
