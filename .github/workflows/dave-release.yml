@@ -1,0 +1,220 @@
+name: Dave Fork Release
+
+# Fork-only release build. Manual dispatch only: Windows installer (unsigned) + macOS arm64 app
+# (unsigned/ad-hoc, no notarization; MBP16 re-signs locally). No secrets are used.
+# Publishes a GitHub prerelease v<version> on DaveDev42/orca with installers and updater metadata.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Fork version without the leading v (e.g. 1.4.274-dave.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dave-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  ORCA_FORK_BUILD: '1'
+  ORCA_LOCAL_BUILD_VERSION: ${{ inputs.version }}
+  ORCA_BUILD_COMMIT: ${{ github.sha }}
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  validate:
+    if: github.repository == 'DaveDev42/orca'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dave\.[0-9]+$ ]]; then
+            echo "::error::version must look like 1.4.274-dave.1, got '$VERSION'"
+            exit 1
+          fi
+
+  build-win:
+    needs: validate
+    if: github.repository == 'DaveDev42/orca'
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          check-latest: true
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - name: Install dependencies
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: pnpm install --frozen-lockfile
+
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Ensure the Rust toolchain
+        shell: pwsh
+        run: |
+          if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+            rustup toolchain install stable --profile minimal
+            rustup default stable
+          }
+          cargo --version
+
+      - name: Build app
+        shell: bash
+        run: pnpm build:release
+        env:
+          ORCA_BACKGROUND_LAUNCH: '1'
+
+      - name: Package Windows installer
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 40
+          max_attempts: 2
+          retry_wait_seconds: 30
+          command: node config/scripts/native-build/node-addons/ensure-native-runtime.mjs --runtime=electron; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish never
+        env:
+          ORCA_BACKGROUND_LAUNCH: '1'
+
+      - name: Validate artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la dist
+          for f in orca-windows-setup.exe orca-windows-setup.exe.blockmap latest.yml; do
+            [[ -s "dist/$f" ]] || { echo "::error::missing $f"; exit 1; }
+          done
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dave-win
+          path: |
+            dist/orca-windows-setup.exe
+            dist/orca-windows-setup.exe.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  build-mac:
+    needs: validate
+    if: github.repository == 'DaveDev42/orca'
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          check-latest: true
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - name: Locate the pinned Node runtime cache
+        shell: bash
+        run: echo "ORCA_NODE_RUNTIME_CACHE_DIR=$HOME/Library/Caches/orca-node-runtime" >>"$GITHUB_ENV"
+
+      - name: Install dependencies
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: pnpm install --frozen-lockfile --cpu=current,x64,arm64
+
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Build app
+        run: pnpm build:release
+
+      - name: Package macOS arm64 (unsigned, no notarization)
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 40
+          max_attempts: 2
+          retry_wait_seconds: 30
+          command: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON config/scripts/orcad-distribution/prebuilds/pinned-node-downloads.mjs darwin-arm64 darwin-x64 && node config/scripts/native-build/node-addons/ensure-native-runtime.mjs --runtime=electron && pnpm exec electron-builder --config config/electron-builder.config.cjs --mac dmg zip --arm64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Validate artifacts
+        run: |
+          set -euo pipefail
+          ls -la dist
+          ls dist/*.zip dist/*.dmg dist/latest-mac.yml
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dave-mac
+          path: |
+            dist/*.zip
+            dist/*.zip.blockmap
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/latest-mac.yml
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  release:
+    needs: [build-win, build-mac]
+    if: github.repository == 'DaveDev42/orca'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dave-*
+          path: assets
+          merge-multiple: true
+
+      - name: Create prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ls -la assets
+          gh release create "v$VERSION" assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" \
+            --title "Orca $VERSION" \
+            --notes "Fork build of Orca at $SHA. Windows unsigned; macOS arm64 unsigned (re-sign locally)." \
+            --prerelease
