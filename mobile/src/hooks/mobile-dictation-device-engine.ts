@@ -16,6 +16,25 @@ export type MobileDictationRoute =
   | { kind: 'device'; fallback: boolean }
   | { kind: 'phone-unavailable'; busy: boolean }
 
+// Only a computer answer is remembered: it is what skips the status round trip before the microphone opens, and a
+// phone that becomes ready (a download finishing) is picked up within the window.
+export const MOBILE_DICTATION_HOST_ROUTE_TTL_MS = 60_000
+let rememberedHost: { readonly speech: OnDeviceSpeech; readonly at: number } | null = null
+
+/** The computer, when this recognizer answered "computer" within the window; null means ask. */
+export function peekMobileDictationHostRoute(
+  speech: OnDeviceSpeech | null,
+  now: number = Date.now()
+): { kind: 'host' } | null {
+  if (speech === null) {
+    return { kind: 'host' }
+  }
+  return rememberedHost?.speech === speech &&
+    now - rememberedHost.at < MOBILE_DICTATION_HOST_ROUTE_TTL_MS
+    ? { kind: 'host' }
+    : null
+}
+
 // Automatic uses the phone when it is ready; This phone never sends audio to the computer; Computer is today's path.
 export async function chooseMobileDictationRoute(
   speech: OnDeviceSpeech | null
@@ -30,8 +49,10 @@ export async function chooseMobileDictationRoute(
     return { kind: 'host' }
   }
   if (status.preference === 'computer') {
+    rememberedHost = { speech, at: Date.now() }
     return { kind: 'host' }
   }
+  rememberedHost = null
   const fallback = status.preference === 'automatic'
   if (status.status === 'ready') {
     return { kind: 'device', fallback }

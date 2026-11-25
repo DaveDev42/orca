@@ -12,6 +12,7 @@ import type {
 import { cancelDesktopDictation } from './mobile-dictation-desktop-start'
 import {
   chooseMobileDictationRoute,
+  peekMobileDictationHostRoute,
   phoneDictationBusyMessage,
   phoneDictationFailedMessage,
   phoneDictationUnavailableMessage,
@@ -228,9 +229,14 @@ export async function startMobileDictation(
   run.stopWhenStarted.current = false
   run.applyStatus('starting')
   const isCurrentGeneration = () => run.generation.current === generation
-  // Without a phone recognizer, start exactly as before: no extra turn before the mic opens.
+  // Without a phone recognizer, or when it recently answered "computer", the mic opens at once; the status is
+  // refreshed behind the tap. Otherwise wait for the recognizer status first.
+  const remembered = peekMobileDictationHostRoute(run.speech.current)
+  if (remembered !== null && run.speech.current !== null) {
+    void chooseMobileDictationRoute(run.speech.current)
+  }
   const engine =
-    run.speech.current === null
+    remembered !== null
       ? HOST_ENGINE
       : await armMobileDictationEngine(run, isCurrentGeneration).catch((err: unknown) => {
           run.applyStatus('idle')
