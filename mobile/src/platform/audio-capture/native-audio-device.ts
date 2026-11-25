@@ -42,6 +42,7 @@ export const nativeWarmAudioSession = createWarmAudioSession({
     return () => subscription.remove()
   },
   setTimer: (run, ms) => setTimeout(run, ms),
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the timer handle only ever comes from the setTimer above
   clearTimer: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>)
 })
 
