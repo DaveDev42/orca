@@ -15,6 +15,8 @@ type BrowserClientHostPlacementPreparationOptions = {
   expectedPairingRevision?: number
   preference: BrowserClientHostPlacementPreference
   enabled: boolean
+  /** `browserServerRenderedEnvironments` setting; matched against the environment's id and name. */
+  serverRenderedEnvironments?: readonly string[]
   resolveEnvironment: (
     selector: string
   ) => KnownRuntimeEnvironment | Promise<KnownRuntimeEnvironment>
@@ -50,6 +52,9 @@ export async function prepareBrowserClientHostPlacement(
   if (
     !expectsBrowserClientHosting({
       enabled: options.enabled,
+      serverRenderedEnvironments: options.serverRenderedEnvironments,
+      environmentId: environment.id,
+      environmentName: environment.name,
       preference: options.preference,
       deviceScope: status.deviceScope,
       capabilities: status.capabilities

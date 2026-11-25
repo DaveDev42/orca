@@ -127,8 +127,14 @@ type RuntimeBrowserHostingStatuses = ReadonlyMap<
 >
 
 export type RuntimeBrowserHostingState = {
-  runtimeEnvironments?: readonly Pick<PublicKnownRuntimeEnvironment, 'id' | 'orcadDeployment'>[]
-  settings?: Pick<GlobalSettings, 'browserClientHostedRemoteEnabled'> | null
+  runtimeEnvironments?: readonly Pick<
+    PublicKnownRuntimeEnvironment,
+    'id' | 'name' | 'orcadDeployment'
+  >[]
+  settings?: Pick<
+    GlobalSettings,
+    'browserClientHostedRemoteEnabled' | 'browserServerRenderedEnvironments'
+  > | null
 }
 
 /** Host orcad browser pages on this desktop through runtime tunnels; managed SSH deployments retain the SSH browser route. */
@@ -148,6 +154,9 @@ export function runtimeHostsPagesOnThisDesktop(
   const status = statuses.get(runtimeEnvironmentId)?.status
   return expectsBrowserClientHosting({
     enabled: state.settings?.browserClientHostedRemoteEnabled !== false,
+    serverRenderedEnvironments: state.settings?.browserServerRenderedEnvironments,
+    environmentId: runtimeEnvironmentId,
+    environmentName: environment?.name,
     preference,
     deviceScope: status?.deviceScope,
     capabilities: status?.capabilities

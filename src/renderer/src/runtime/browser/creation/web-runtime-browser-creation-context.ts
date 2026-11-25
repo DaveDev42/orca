@@ -93,8 +93,13 @@ export function createWebRuntimeBrowserCreationContext(
     BROWSER_TAB_CREATE_KNOWN_ID_RUNTIME_CAPABILITY
   )
   // Match main’s placement predicate for early staging; restage from the live verdict when cached status disagrees.
+  const appState = useAppStore.getState()
   const expectsClientHosting = expectsBrowserClientHosting({
-    enabled: useAppStore.getState().settings?.browserClientHostedRemoteEnabled !== false,
+    enabled: appState.settings?.browserClientHostedRemoteEnabled !== false,
+    serverRenderedEnvironments: appState.settings?.browserServerRenderedEnvironments,
+    environmentId,
+    environmentName: appState.runtimeEnvironments?.find((entry) => entry.id === environmentId)
+      ?.name,
     preference: args.placementPreference,
     deviceScope: readRuntimeStatuses()?.get(environmentId)?.status?.deviceScope,
     capabilities: advertisedCapabilities

@@ -8,16 +8,21 @@ import { prepareRuntimeEnvironmentBrowserPlacement } from './runtime-environment
 
 export function registerRuntimeEnvironmentBrowserClientHostHandler(options: {
   getUserDataPath: () => string
-  getSettings: () => Pick<GlobalSettings, 'browserClientHostedRemoteEnabled'>
+  getSettings: () => Pick<
+    GlobalSettings,
+    'browserClientHostedRemoteEnabled' | 'browserServerRenderedEnvironments'
+  >
 }): void {
   ipcMain.handle(
     'runtimeEnvironments:prepareBrowserClientHostPlacement',
     async (_event, input: unknown): Promise<BrowserPageCreationPlacement> => {
       const args = BrowserClientHostPlacementPreparationRequest.parse(input)
       const userDataPath = options.getUserDataPath()
+      const settings = options.getSettings()
       return prepareRuntimeEnvironmentBrowserPlacement(userDataPath, {
         ...args,
-        enabled: options.getSettings().browserClientHostedRemoteEnabled !== false
+        enabled: settings.browserClientHostedRemoteEnabled !== false,
+        serverRenderedEnvironments: settings.browserServerRenderedEnvironments
       })
     }
   )
