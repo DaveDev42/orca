@@ -1,11 +1,13 @@
 import { useEffect, useMemo } from 'react'
+import { Keyboard } from 'react-native'
 import type { BridgeNativeVerb } from '../mobile-web-shell/bridge/native-capabilities/bridge-native-verbs'
 import type { BRIDGE_STORE_VERB } from '../mobile-web-shell/bridge/native-capabilities/bridge-store-verb'
 import { useMediaHandleRegistry } from '../mobile-web-shell/native-capabilities/use-media-handle-registry'
 import { createNativeAudioCapture } from './audio-capture/native-audio'
 import {
   NATIVE_AUDIO_DEVICE_SAMPLE_RATE,
-  nativeAudioDeviceEngine
+  nativeAudioDeviceEngine,
+  nativeWarmAudioSession
 } from './audio-capture/native-audio-device'
 import { createNativeSpeechServer } from './speech/native-speech'
 import { nativeSpeechDeviceEngine } from './speech/native-speech-device'
@@ -31,6 +33,14 @@ export function useNativeDeviceVerbs(
   // A new session is a new document; close any mic its predecessor left open.
   const audio = useMemo(() => createNativeAudioCapture(nativeAudioDeviceEngine), [sessionId])
   useEffect(() => () => audio.dispose(), [audio])
+  // Raising the keyboard means a composer took focus: bring a Bluetooth car into call mode now, not on the mic tap.
+  // Only with permission already granted, and the warm engine lets itself go after a quiet minute.
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardWillShow', () => {
+      void nativeWarmAudioSession.prewarm().catch(() => undefined)
+    })
+    return () => subscription.remove()
+  }, [])
   const speech = useMemo(() => createNativeSpeechServer(nativeSpeechDeviceEngine), [sessionId])
   useEffect(() => () => speech.dispose(), [speech])
   return useMemo(
