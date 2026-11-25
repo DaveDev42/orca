@@ -203,6 +203,7 @@ export function buildDefaultSettings(args: {
     terminalShortcutPolicy: 'orca-first',
     floatingTerminalEnabled: true,
     browserClientHostedRemoteEnabled: true,
+    browserServerRenderedEnvironments: [],
     antigravityManagedAgyEnabled: true,
     antigravityServerAutoUpdateEnabled: true,
     floatingTerminalDefaultedForAllUsers: true,
