@@ -5,6 +5,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent'
 import { SocksClient, type SocksProxy } from 'socks'
 import { SocksProxyAgent } from 'socks-proxy-agent'
 import { resolveEnvProxy, type EnvProxy } from './env-proxy'
+import { relayProxyEnv } from './relay-proxy-config'
 
 // Why: Electron's main process ignores proxy env vars for fetch (and `ws` always does).
 // Only the Orca account/relay calls opt in here. The embedded browser (Chromium session)
@@ -69,7 +70,7 @@ function dispatcherFor(proxy: EnvProxy): Dispatcher {
  * A fetch that tunnels through the env-configured proxy for each URL, or null when the
  * environment names no proxy at all (callers then keep using the global fetch unchanged).
  */
-export function createEnvProxyFetch(env: NodeJS.ProcessEnv = process.env): typeof fetch | null {
+export function createEnvProxyFetch(env: NodeJS.ProcessEnv = relayProxyEnv()): typeof fetch | null {
   if (!hasProxyEnv(env)) {
     return null
   }
@@ -93,7 +94,7 @@ export function accountRelayFetch(): typeof fetch {
 /** `ws` agent for one relay socket URL, or undefined for a direct connection. */
 export function envProxyWsAgent(
   url: string,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = relayProxyEnv()
 ): HttpAgent | undefined {
   const proxy = resolveEnvProxy(url, env)
   if (!proxy) {
@@ -116,7 +117,7 @@ export function envProxyWsAgent(
 /** Spread into a relay `new WebSocket(url, {...})`: adds nothing when no proxy applies. */
 export function envProxyWsOptions(
   url: string,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = relayProxyEnv()
 ): { agent?: HttpAgent } {
   const agent = envProxyWsAgent(url, env)
   return agent ? { agent } : {}
