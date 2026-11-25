@@ -11,6 +11,11 @@ on:
         description: Fork version without the leading v (e.g. 1.4.274-dave.1)
         required: true
         type: string
+      mac_runner:
+        description: macOS runner label
+        required: false
+        default: macos-14
+        type: string
 
 permissions:
   contents: read
@@ -123,7 +128,7 @@ jobs:
   build-mac:
     needs: validate
     if: github.repository == 'DaveDev42/orca'
-    runs-on: macos-14
+    runs-on: ${{ inputs.mac_runner }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
