@@ -18,6 +18,8 @@ export type DictationCapture = {
   // End only after delivering the stop reply’s final ring audio; native events already delivered theirs. Never reject from exit cleanup.
   readonly end: () => Promise<void>
   readonly release: () => void
+  // Warm the microphone ahead of a tap (composer focus). Optional: the page seam has no verb for it.
+  readonly prewarm?: () => Promise<boolean>
   readonly onChunk: (
     handler: (chunk: DictationCaptureChunk) => void
   ) => DictationCaptureSubscription
