@@ -7,6 +7,7 @@ import {
   createDictationTextPipeline,
   type DictationTextSettings
 } from '../../shared/speech/dictation/dictation-text-pipeline'
+import { withReplaceMap } from './dictation-replace-map'
 import { getCatalogModel } from './model-catalog'
 import type { ModelManager } from './model-manager'
 import { sileroVadLanded } from './speech-vad-model'
@@ -78,7 +79,9 @@ export class SttService {
     owner = 'desktop',
     voice?: Partial<DictationTextSettings>
   ): Promise<void> {
-    const clean = createDictationTextPipeline(getCatalogModel(modelId), voice, terms)
+    const baseClean = createDictationTextPipeline(getCatalogModel(modelId), voice, terms)
+    // Orca's own dictionary misses a term with a Hangul particle attached, so mobile runs the local map last.
+    const clean = owner.startsWith('mobile:') ? withReplaceMap(baseClean) : baseClean
     return startSttDictation(
       this.state,
       modelId,

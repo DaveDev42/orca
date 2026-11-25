@@ -5,6 +5,7 @@ import {
   hasOpenAiSpeechApiKey,
   readOpenAiSpeechApiKey
 } from './openai-api-key-store'
+import { readLocalSttServer } from './local-stt-server-config'
 import {
   canReadOpenAiCompatibleSpeechProvider,
   hasOpenAiCompatibleSpeechProvider,
@@ -53,6 +54,10 @@ export async function resolveCloudTranscriptionTarget(
     }
     const url = openAiCompatibleTranscriptionUrl(provider.baseUrl)
     return { url, model: provider.model, apiKey: provider.apiKey, label: new URL(url).host }
+  }
+  const local = await readLocalSttServer()
+  if (local) {
+    return { url: local.url, model: local.model, apiKey: '', label: new URL(local.url).host }
   }
   // Settings load already moves retired ids; this catches a caller still holding one.
   const model = OPENAI_TRANSCRIPTION_MODEL_BY_ID[replaceRetiredSpeechModelId(modelId)]
