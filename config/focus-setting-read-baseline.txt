@@ -82,6 +82,7 @@
 1 src/renderer/src/components/setup-guide/SetupGuideSidebarEntry.tsx
 1 src/renderer/src/components/setup-guide/SetupGuideTelemetryObserver.tsx
 2 src/renderer/src/components/setup-guide/use-setup-guide-progress.ts
+1 src/renderer/src/components/shared/kill-all-terminal-surfaces.ts # fork: Kill All routes tabs by the same close route as closeTerminalTab
 1 src/renderer/src/components/sidebar/chrome/SidebarSettingsHelpMenu.tsx
 1 src/renderer/src/components/sidebar/chrome/SidebarTaskNavButton.tsx
 1 src/renderer/src/components/sidebar/project-admission/drop/sidebar-project-drop.ts
