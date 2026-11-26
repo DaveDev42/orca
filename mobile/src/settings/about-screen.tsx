@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { View, Text } from 'react-native'
 import { Globe } from 'lucide-react-native'
 import Svg, { Path } from 'react-native-svg'
@@ -31,15 +31,29 @@ function XIcon({ size = 16, color = colors.textSecondary }) {
 export default function AboutScreen({
   onBack,
   openExternal,
-  versionLabel
+  versionLabel,
+  onSecretTap
 }: {
   onBack: () => void
   openExternal: (url: string) => Promise<unknown>
   versionLabel: string
+  /** Fired by tapping the version five times in a row; opens the hidden Labs screen. */
+  onSecretTap?: () => void
 }) {
   const t = useMobileTranslation()
   useMobileColorScheme()
   const [error, setError] = useState(false)
+  const versionTaps = useRef({ count: 0, last: 0 })
+  const tapVersion = () => {
+    const now = Date.now()
+    const taps = versionTaps.current
+    taps.count = now - taps.last < 1500 ? taps.count + 1 : 1
+    taps.last = now
+    if (taps.count >= 5) {
+      taps.count = 0
+      onSecretTap?.()
+    }
+  }
   const openLink = (url: string) => {
     setError(false)
     void openExternal(url).catch(() => setError(true))
@@ -79,7 +93,9 @@ export default function AboutScreen({
         />
       </SettingsSection>
 
-      <Text style={styles.versionText}>{versionLabel}</Text>
+      <Text style={styles.versionText} onPress={onSecretTap ? tapVersion : undefined}>
+        {versionLabel}
+      </Text>
       {error && (
         <Text accessibilityRole="alert" style={styles.errorText}>
           {t('settings.aboutScreen.openLinkFailed', 'Could not open the link. Try again.')}

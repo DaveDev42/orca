@@ -20,6 +20,7 @@ export default function NativeAboutRoute() {
       onBack={() => router.back()}
       openExternal={(url) => Linking.openURL(url)}
       versionLabel={getVersionLabel()}
+      onSecretTap={() => router.push('/this-device-spike')}
     />
   )
 }
