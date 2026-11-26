@@ -53,7 +53,6 @@ import { registerOrcaProtocolClient } from './startup/open-routing/orca-protocol
 import { clearWindowsStdHandleInheritance } from './startup/windows-startup/windows-std-handle-inheritance'
 import { installWindowsIsolatedSpawner } from './startup/windows-startup/windows-isolated-spawner'
 import { dropE2eSpawnLogOutsideE2e } from './startup/testing/e2e-spawn-log-env'
-import { captureRelayProxyAtStartup } from './network/relay-proxy-config'
 import type { MainWindowOpenOptions } from './window/main-window/main-window-contracts'
 import type { DesktopActivationRequest } from './startup/serve-launch/serve-desktop-activation'
 import {
@@ -67,8 +66,6 @@ import { installWorkerThreadDiagnostics } from './worker-threads/worker-thread-d
 
 // Before anything spawns, so no daemon, PTY or agent inherits it outside e2e.
 dropE2eSpawnLogOutsideE2e()
-// The opt-in relay SOCKS proxy (ORCA_RELAY_PROXY) is read here and kept out of every child's environment.
-captureRelayProxyAtStartup()
 // A fatal OOM must crash with a report, never spin on its own trap.
 installFatalSignalListenerGuard()
 // A dead terminal or full log volume must not turn a console line into a modal crash dialog.
