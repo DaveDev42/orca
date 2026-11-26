@@ -6,6 +6,7 @@ import type { WorktreeCardDisplaySettings } from '../worktree/card-display-setti
 import type { BrowserLinkOpeningSettings } from '../browser/navigation/browser-link-opening-settings'
 import type { BrowserPasswordsGlobalSettings } from '../browser/passwords/browser-passwords-types'
 import type { BrowserServerRenderedGlobalSettings } from '../browser/client-hosting/browser-client-hosting-eligibility'
+import type { BrowserEnvironmentPolicyGlobalSettings } from '../browser/environment-policy/browser-environment-policy'
 import type { BrowserMemorySaverGlobalSettings } from '../browser/guest-lifecycle/browser-memory-saver'
 import type { PerfNoticeGlobalSettings } from '../perf-notices/perf-notice-settings'
 import type { ClaudeAccountSwitchSettings } from '../agent-accounts/claude/claude-account-switch-settings'
@@ -74,6 +75,7 @@ export type GlobalSettingsBase = AntigravityChatAuthSettings &
   BrowserPasswordsGlobalSettings &
   BrowserMemorySaverGlobalSettings &
   BrowserServerRenderedGlobalSettings &
+  BrowserEnvironmentPolicyGlobalSettings &
   PerfNoticeGlobalSettings &
   NestedWorkerDepthSettings &
   AgentWorkspaceTrustSettings &

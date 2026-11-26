@@ -14,6 +14,7 @@ import {
 } from '../partitions/browser-route-partition-retention'
 import { BrowserRouteSessionRegistry } from './browser-route-session-registry'
 import { BrowserRouteWebContentsRegistry } from '../guest-authority/browser-route-webcontents-registry'
+import { releaseBrowserEnvironmentPolicy } from '../../environment-policy/browser-environment-policy-runtime'
 import { browserSessionRegistry } from '../../sessions/profiles/browser-session-registry'
 
 const routeWebContentsRegistryRef: {
@@ -60,6 +61,7 @@ export const browserRouteSessionRegistry = new BrowserRouteSessionRegistry({
   },
   clearPolicies: ({ partition }) => {
     browserSessionRegistry.clearRoutePartitionPolicies(partition)
+    releaseBrowserEnvironmentPolicy(partition)
   },
   retirePageAuthority: (retirement) =>
     routeWebContentsRegistryRef.current?.retirePageAuthority(retirement) ?? false,

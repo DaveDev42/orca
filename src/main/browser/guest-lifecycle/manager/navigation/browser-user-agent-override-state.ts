@@ -4,6 +4,8 @@ import type { CdpUserAgentMetadata } from '../../../identity/browser-tab-identit
 export type CdpUserAgentOverride = {
   userAgent: string
   userAgentMetadata?: CdpUserAgentMetadata
+  /** `navigator.platform`; omitted leaves the page's own. */
+  platform?: string
 }
 
 export type CdpUserAgentOverrideOperation = {

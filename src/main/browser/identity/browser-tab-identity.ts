@@ -34,6 +34,13 @@ export type BrowserTabIdentity =
   /** A host-pinned UA (Google sign-in, Chase) with the same desktop client hints. */
   | { kind: 'site'; userAgent: string }
   | { kind: 'mobile'; userAgent: string; userAgentMetadata: UserAgentMetadata }
+  /** An environment's pinned identity (user agent, `navigator.platform`, client hints). */
+  | {
+      kind: 'environment'
+      userAgent: string
+      platform: string
+      userAgentMetadata: UserAgentMetadata
+    }
 
 type SiteTabIdentity = Extract<BrowserTabIdentity, { kind: 'site' }>
 

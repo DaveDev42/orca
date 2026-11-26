@@ -39,6 +39,7 @@ import {
   selectBrowserClientPageRenderer,
   whenBrowserClientPageRendererAvailable
 } from '../../client-pages/renderer/browser-client-page-renderer-runtime'
+import { withBrowserEnvironmentPolicy } from '../../environment-policy/browser-environment-policy-runtime'
 import { PairedRuntimeBrowserClientHostComposition } from './paired-runtime-browser-client-host-composition'
 import { PairedRuntimeBrowserClientHost } from './paired-runtime-browser-client-host'
 import {
@@ -108,7 +109,10 @@ const browserClientHosts =
             storageScope: next.storageScope,
             retainNetworkRoute,
             selectRenderer: selectBrowserClientPageRenderer,
-            routeSessions: browserRouteSessionRegistry,
+            routeSessions: withBrowserEnvironmentPolicy(browserRouteSessionRegistry, {
+              environmentId: input.environmentId,
+              environmentName: input.environmentLabel
+            }),
             routeWebContents: browserRouteWebContentsRegistry,
             guestBinding: createBrowserClientPageGuestBinding(browserManager),
             executeAutomation: executeBrowserClientPageAutomation,

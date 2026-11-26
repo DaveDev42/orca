@@ -9,6 +9,8 @@ import {
 } from '../../opencode/accounts/opencode-go-api-key-store'
 import { agentHookServer } from '../../agent-hooks/server/agent-hook-server'
 import { browserManager } from '../../browser/guest-lifecycle/manager/browser-manager'
+import { setBrowserEnvironmentIdentityDependencies } from '../../browser/environment-policy/browser-environment-identity'
+import { setBrowserEnvironmentPolicySettingsResolver } from '../../browser/environment-policy/browser-environment-policy-runtime'
 import type { DesktopCore } from '../../core-desktop/desktop-core'
 import type { Store } from '../../persistence/loading-store/store'
 import { createDesktopOrcaAccountService } from '../desktop-orca-account-service'
@@ -78,4 +80,9 @@ export async function initializeMainProcessAccountServices(
         : store.getSettings().nonMacSearchKeybindingSeed) === 'legacy'
   })
   browserManager.setSettingsResolver(() => ({ keybindings: core.keybindings?.getOverrides() }))
+  // Read per page, so a settings edit reaches the next tab of that environment.
+  setBrowserEnvironmentPolicySettingsResolver(() => store.getSettings())
+  setBrowserEnvironmentIdentityDependencies({
+    onDebuggerAttached: (guest) => browserManager.invalidateGuestMemoryProtection(guest)
+  })
 }
