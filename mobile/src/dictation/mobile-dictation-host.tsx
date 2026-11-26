@@ -90,7 +90,7 @@ export function MobileDictationHostProvider({ children }: { children: ReactNode 
 
   // The phone's own switches, read when a dictation starts; on until a stored 'off' says otherwise.
   const [autoStopEnabled, setAutoStopEnabled] = useState(true)
-  const autoSendEnabledRef = useRef(true)
+  const autoSendEnabledRef = useRef(false)
   // Set when the speaker's silence ended the dictation, so only that kind of stop sends the words.
   const endedByQuietRef = useRef(false)
 

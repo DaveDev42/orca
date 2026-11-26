@@ -206,24 +206,26 @@ function stringArray(value: unknown): string[] {
     : []
 }
 
-// Phone-side dictation switches: a stored 'off' turns one off; a missing, refused or unreadable value leaves it on.
+// Phone-side dictation switches: a stored 'on'/'off' wins; a missing, refused or unreadable value uses the switch's default
+// (auto-stop on, auto-send off so the transcript stays in the composer for editing).
 export const DICTATION_AUTO_STOP_KEY = 'orca:dictationAutoStop'
 export const DICTATION_AUTO_SEND_KEY = 'orca:dictationAutoSend'
 
-async function loadDictationSwitch(key: string): Promise<boolean> {
+async function loadDictationSwitch(key: string, fallback: boolean): Promise<boolean> {
   try {
-    return (await AsyncStorage.getItem(key)) !== 'off'
+    const stored = await AsyncStorage.getItem(key)
+    return stored === 'on' ? true : stored === 'off' ? false : fallback
   } catch {
-    return true
+    return fallback
   }
 }
 
 export function loadDictationAutoStop(): Promise<boolean> {
-  return loadDictationSwitch(DICTATION_AUTO_STOP_KEY)
+  return loadDictationSwitch(DICTATION_AUTO_STOP_KEY, true)
 }
 
 export function loadDictationAutoSend(): Promise<boolean> {
-  return loadDictationSwitch(DICTATION_AUTO_SEND_KEY)
+  return loadDictationSwitch(DICTATION_AUTO_SEND_KEY, false)
 }
 
 export function saveDictationAutoStop(on: boolean): Promise<void> {
