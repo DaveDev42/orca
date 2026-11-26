@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { probeOrcaServerSignIn } from '../orca-profiles/orca-cloud-server-sign-in-probe'
 import { startServerSignInRequest } from '../orca-profiles/orca-cloud-server-sign-in-requests'
 import { skillCloudRequest } from '../skills/cloud/skill-cloud-request'
-import { captureRelayProxyAtStartup, resetCapturedRelayProxyForTests } from './relay-proxy-config'
 
 // A SOCKS5 listener that records every CONNECT destination and then drops the connection, so a
 // call that reaches it fails fast and the test only asserts where the call went.
@@ -42,7 +41,6 @@ describe('Orca Cloud calls follow ORCA_RELAY_PROXY', () => {
   afterEach(() => {
     server?.close()
     server = null
-    resetCapturedRelayProxyForTests()
     vi.unstubAllEnvs()
   })
 
@@ -59,7 +57,7 @@ describe('Orca Cloud calls follow ORCA_RELAY_PROXY', () => {
     }
     const recorder = await socksRecorder()
     server = recorder.server
-    captureRelayProxyAtStartup({ ORCA_RELAY_PROXY: `socks5h://127.0.0.1:${recorder.port}` })
+    vi.stubEnv('ORCA_RELAY_PROXY', `socks5h://127.0.0.1:${recorder.port}`)
     return recorder.seen
   }
 
