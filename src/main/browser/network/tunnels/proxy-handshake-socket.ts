@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type { Duplex } from 'node:stream'
-import type { BrowserNetworkTunnelSocket } from './browser-network-tunnel-stream-state'
+import type { BrowserNetworkTunnelSocket } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
 /** A stream that may still be connecting; writes made before it connects are queued. */
 export type ProxyHandshakeTransport = Duplex & { setNoDelay?: (noDelay?: boolean) => unknown }

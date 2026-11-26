@@ -1,4 +1,5 @@
 import type { BrowserNetworkTunnelConnectionCredit } from './browser-network-tunnel-connection-credit'
+import type { BrowserNetworkTunnelClientSocket } from './browser-network-tunnel-client-socket'
 import { browserNetworkTunnelMaxPendingChunks } from './browser-network-tunnel-stream-state'
 
 export type BrowserNetworkTunnelSourceReceiveStream = {
@@ -12,7 +13,7 @@ export type BrowserNetworkTunnelSourceReceiveStream = {
   pendingToSocketBytes: number
   unsettledToSocket: BrowserNetworkTunnelSourceDataSettlement[]
   readableDemand: boolean
-  socket: { push: (bytes: Buffer | null) => boolean }
+  socket: Pick<BrowserNetworkTunnelClientSocket, 'push'>
 }
 
 type BrowserNetworkTunnelSourceData = {
@@ -117,7 +118,7 @@ function flushBrowserNetworkSourceData(stream: BrowserNetworkTunnelSourceReceive
       bytes: bytes.byteLength,
       releaseApplicationBytes: pending.releaseApplicationBytes
     })
-    if (!stream.socket.push(Buffer.from(bytes))) {
+    if (!stream.socket.push(bytes)) {
       stream.readableDemand = false
     }
   }

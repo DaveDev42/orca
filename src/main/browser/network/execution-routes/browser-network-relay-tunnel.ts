@@ -8,7 +8,7 @@ import type { BrowserNetworkTunnelDuplex } from '../tunnels/browser-network-tunn
 import {
   BROWSER_NETWORK_RELAY_FLOW_CONTROL,
   BROWSER_NETWORK_RELAY_WRITER_LIMITS
-} from '../tunnels/browser-network-tunnel-stream-state'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 import { BrowserNetworkDeferredSocket } from './browser-network-deferred-socket'
 import type { BrowserNetworkRelayChild } from './browser-network-relay-launch'
 

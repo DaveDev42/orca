@@ -106,4 +106,4 @@ export type BrowserNetworkTunnelSessionOptions = {
   now?: () => number
   claimAggregateRetainedBytes?: (bytes: number) => (() => void) | null
 }
-import type { BrowserNetworkTunnelOpen } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-protocol'
+import type { BrowserNetworkTunnelOpen } from './browser-network-tunnel-protocol'

@@ -1,7 +1,10 @@
+import type { BrowserNetworkTunnelClientSocket } from './browser-network-tunnel-client-socket'
 import type { BrowserNetworkTunnelClientStream } from './browser-network-tunnel-client-stream'
 
-export function retireBrowserNetworkTunnelClientStream(
-  stream: BrowserNetworkTunnelClientStream,
+export function retireBrowserNetworkTunnelClientStream<
+  TSocket extends BrowserNetworkTunnelClientSocket
+>(
+  stream: BrowserNetworkTunnelClientStream<TSocket>,
   options: { error?: Error; destroySocket: boolean; remove: () => void }
 ): void {
   if (stream.closed) {

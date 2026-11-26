@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks'
-import type { BrowserNetworkTunnelSessionOptions } from './browser-network-tunnel-stream-state'
+import type { BrowserNetworkTunnelSessionOptions } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
 // Rapid browsing across four heavy pages measured 302 opens in 10 s.
 const MAX_OPENS_PER_WINDOW = 1024

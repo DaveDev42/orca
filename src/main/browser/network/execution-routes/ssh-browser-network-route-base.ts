@@ -7,7 +7,7 @@ import {
   type BrowserNetworkTunnelDialer
 } from '../tunnels/browser-network-tunnel-proxy-connect'
 import type { BrowserNetworkTunnelProxy } from '../tunnels/browser-network-tunnel-proxy-selection'
-import type { BrowserNetworkTunnelSocket } from '../tunnels/browser-network-tunnel-stream-state'
+import type { BrowserNetworkTunnelSocket } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 import { BrowserNetworkDeferredSocket } from './browser-network-deferred-socket'
 import type { BrowserNetworkExecutionRoute } from './browser-network-execution-route-contract'
 

@@ -3,31 +3,36 @@ import {
   decodeBrowserNetworkTunnelWindowUpdate,
   encodeBrowserNetworkTunnelWindowUpdate,
   type BrowserNetworkTunnelFrame
-} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-protocol'
+} from './browser-network-tunnel-protocol'
 import { dispatchBrowserNetworkTunnelClientFrame } from './browser-network-tunnel-client-frame-dispatch'
+import type { BrowserNetworkTunnelClientSocket } from './browser-network-tunnel-client-socket'
 import type { BrowserNetworkTunnelClientStream } from './browser-network-tunnel-client-stream'
 import {
   finishBrowserNetworkSourceData,
   queueBrowserNetworkSourceData
 } from './browser-network-tunnel-source-receive-flow'
 
-type BrowserNetworkTunnelClientStreamFrameActions = {
+type BrowserNetworkTunnelClientStreamFrameActions<
+  TSocket extends BrowserNetworkTunnelClientSocket
+> = {
   send: (
     opcode: BrowserNetworkTunnelOpcode,
     streamId: number,
     payload?: Uint8Array<ArrayBufferLike>
   ) => boolean
   closeTunnel: (error: Error) => void
-  flushWrites: (stream: BrowserNetworkTunnelClientStream) => void
+  flushWrites: (stream: BrowserNetworkTunnelClientStream<TSocket>) => void
   claimApplicationBytes: (bytes: number) => (() => void) | null
-  retire: (stream: BrowserNetworkTunnelClientStream, error?: Error) => void
-  fail: (stream: BrowserNetworkTunnelClientStream, error: Error) => void
+  retire: (stream: BrowserNetworkTunnelClientStream<TSocket>, error?: Error) => void
+  fail: (stream: BrowserNetworkTunnelClientStream<TSocket>, error: Error) => void
 }
 
-export function handleBrowserNetworkTunnelClientStreamFrame(
-  stream: BrowserNetworkTunnelClientStream,
+export function handleBrowserNetworkTunnelClientStreamFrame<
+  TSocket extends BrowserNetworkTunnelClientSocket
+>(
+  stream: BrowserNetworkTunnelClientStream<TSocket>,
   frame: BrowserNetworkTunnelFrame,
-  actions: BrowserNetworkTunnelClientStreamFrameActions
+  actions: BrowserNetworkTunnelClientStreamFrameActions<TSocket>
 ): void {
   dispatchBrowserNetworkTunnelClientFrame(frame, {
     opened: () => openedStream(stream, actions),
@@ -41,9 +46,9 @@ export function handleBrowserNetworkTunnelClientStreamFrame(
   })
 }
 
-function openedStream(
-  stream: BrowserNetworkTunnelClientStream,
-  actions: BrowserNetworkTunnelClientStreamFrameActions
+function openedStream<TSocket extends BrowserNetworkTunnelClientSocket>(
+  stream: BrowserNetworkTunnelClientStream<TSocket>,
+  actions: BrowserNetworkTunnelClientStreamFrameActions<TSocket>
 ): void {
   if (stream.opened) {
     actions.closeTunnel(new Error('Browser tunnel received a duplicate opened frame'))
@@ -64,10 +69,10 @@ function openedStream(
   stream.resolveOpen(stream.socket)
 }
 
-function grantStreamCredit(
-  stream: BrowserNetworkTunnelClientStream,
+function grantStreamCredit<TSocket extends BrowserNetworkTunnelClientSocket>(
+  stream: BrowserNetworkTunnelClientStream<TSocket>,
   payload: Uint8Array<ArrayBufferLike>,
-  actions: BrowserNetworkTunnelClientStreamFrameActions
+  actions: BrowserNetworkTunnelClientStreamFrameActions<TSocket>
 ): void {
   const credit = decodeBrowserNetworkTunnelWindowUpdate(payload)
   if (!stream.opened || !credit || stream.sendCredit + credit > stream.windowBytes) {
@@ -78,10 +83,10 @@ function grantStreamCredit(
   actions.flushWrites(stream)
 }
 
-function deliverStreamData(
-  stream: BrowserNetworkTunnelClientStream,
+function deliverStreamData<TSocket extends BrowserNetworkTunnelClientSocket>(
+  stream: BrowserNetworkTunnelClientStream<TSocket>,
   payload: Uint8Array<ArrayBufferLike>,
-  actions: BrowserNetworkTunnelClientStreamFrameActions
+  actions: BrowserNetworkTunnelClientStreamFrameActions<TSocket>
 ): void {
   const result = queueBrowserNetworkSourceData(stream, payload, actions.claimApplicationBytes)
   // Valid credit can exceed the shared memory budget, so exhaustion must only fail its stream.
@@ -92,8 +97,8 @@ function deliverStreamData(
   }
 }
 
-function halfCloseStream(
-  stream: BrowserNetworkTunnelClientStream,
+function halfCloseStream<TSocket extends BrowserNetworkTunnelClientSocket>(
+  stream: BrowserNetworkTunnelClientStream<TSocket>,
   closeTunnel: (error: Error) => void
 ): void {
   if (!stream.opened || !finishBrowserNetworkSourceData(stream)) {
@@ -101,9 +106,9 @@ function halfCloseStream(
   }
 }
 
-function closeStream(
-  stream: BrowserNetworkTunnelClientStream,
-  actions: BrowserNetworkTunnelClientStreamFrameActions
+function closeStream<TSocket extends BrowserNetworkTunnelClientSocket>(
+  stream: BrowserNetworkTunnelClientStream<TSocket>,
+  actions: BrowserNetworkTunnelClientStreamFrameActions<TSocket>
 ): void {
   if (!stream.opened || stream.remoteClosed) {
     actions.closeTunnel(new Error('Browser tunnel received an invalid destination close'))

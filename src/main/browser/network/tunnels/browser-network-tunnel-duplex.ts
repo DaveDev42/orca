@@ -1,13 +1,8 @@
 import { Duplex } from 'node:stream'
-import { BROWSER_NETWORK_TUNNEL_INITIAL_WINDOW_BYTES } from './browser-network-tunnel-stream-state'
+import type { BrowserNetworkTunnelClientSocketCallbacks } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-client-socket'
+import { BROWSER_NETWORK_TUNNEL_INITIAL_WINDOW_BYTES } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
-type BrowserNetworkTunnelDuplexOptions = {
-  writeBytes: (bytes: Uint8Array<ArrayBufferLike>, callback: (error?: Error | null) => void) => void
-  requestRead: () => void
-  consumeReadBytes: (bytes: number) => void
-  finishWrite: (callback: (error?: Error | null) => void) => void
-  destroyStream: (error: Error | null, callback: (error?: Error | null) => void) => void
-}
+type BrowserNetworkTunnelDuplexOptions = BrowserNetworkTunnelClientSocketCallbacks
 
 export class BrowserNetworkTunnelDuplex extends Duplex {
   private readonly options: BrowserNetworkTunnelDuplexOptions
@@ -20,6 +15,16 @@ export class BrowserNetworkTunnelDuplex extends Duplex {
     // Retirement can emit errors before consumers attach; unhandled 'error' events crash Node.
     this.on('error', () => {})
     this.options = options
+  }
+
+  // The shared client hands over plain Uint8Arrays it owns; Node's readable side wants Buffers.
+  override push(chunk: Uint8Array<ArrayBufferLike> | null, encoding?: BufferEncoding): boolean {
+    return super.push(
+      chunk === null || Buffer.isBuffer(chunk)
+        ? chunk
+        : Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength),
+      encoding
+    )
   }
 
   override _read(): void {

@@ -11,7 +11,7 @@ import {
   type BrowserNetworkTunnelSessionOptions,
   type BrowserNetworkTunnelSocket,
   type BrowserNetworkTunnelStream
-} from './browser-network-tunnel-stream-state'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
 type BrowserNetworkTunnelOpenAdmissionContext = {
   openedStreamIds: Set<number>

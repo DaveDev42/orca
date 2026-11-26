@@ -2,11 +2,11 @@ import {
   BROWSER_NETWORK_TUNNEL_MAX_DATA_BYTES,
   decodeBrowserNetworkTunnelWindowUpdate
 } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-protocol'
-import type { BrowserNetworkTunnelConnectionCredit } from './browser-network-tunnel-connection-credit'
+import type { BrowserNetworkTunnelConnectionCredit } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-connection-credit'
 import {
   browserNetworkTunnelMaxPendingChunks,
   type BrowserNetworkTunnelStream
-} from './browser-network-tunnel-stream-state'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
 export const BROWSER_NETWORK_TUNNEL_ROUTE_BUFFER_OVERFLOW = 'route_buffer_overflow'
 

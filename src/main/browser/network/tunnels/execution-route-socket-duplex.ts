@@ -2,7 +2,7 @@ import { Duplex } from 'node:stream'
 import {
   BROWSER_NETWORK_TUNNEL_CONNECT_TIMEOUT_MS,
   type BrowserNetworkTunnelSocket
-} from './browser-network-tunnel-stream-state'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
 // Wait for connect before allowing a SOCKS success reply.
 export function openExecutionRouteSocketAsDuplex(

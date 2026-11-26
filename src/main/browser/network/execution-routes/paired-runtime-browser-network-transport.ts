@@ -13,7 +13,7 @@ import type { BrowserNetworkTunnelOutboundMemoryLease } from '../tunnels/browser
 import {
   BROWSER_NETWORK_TUNNEL_LEGACY_FLOW_CONTROL,
   BROWSER_NETWORK_TUNNEL_WINDOW_V2_FLOW_CONTROL
-} from '../tunnels/browser-network-tunnel-stream-state'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
 const BROWSER_TUNNEL_WS_SOFT_CAP_BYTES = 1024 * 1024
 const BROWSER_TUNNEL_WS_MAX_QUEUED_BYTES = 7 * 1024 * 1024

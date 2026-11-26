@@ -10,7 +10,7 @@ import { BrowserNetworkTunnelSession } from '../tunnels/browser-network-tunnel-s
 import {
   BROWSER_NETWORK_RELAY_FLOW_CONTROL,
   BROWSER_NETWORK_RELAY_WRITER_LIMITS
-} from '../tunnels/browser-network-tunnel-stream-state'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 import type { BrowserNetworkRelayChild } from './browser-network-relay-launch'
 import { attachBrowserNetworkRelayTunnel } from './browser-network-relay-tunnel'
 

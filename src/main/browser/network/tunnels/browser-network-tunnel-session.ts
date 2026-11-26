@@ -13,12 +13,12 @@ import {
   queueBrowserNetworkDestinationData,
   writeBrowserNetworkDestination
 } from './browser-network-tunnel-destination-flow'
-import { BrowserNetworkTunnelConnectionCredit } from './browser-network-tunnel-connection-credit'
-import { BrowserNetworkTunnelFrameSender } from './browser-network-tunnel-frame-sender'
+import { BrowserNetworkTunnelConnectionCredit } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-connection-credit'
+import { BrowserNetworkTunnelFrameSender } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-frame-sender'
 import {
   receiveBrowserNetworkTunnelFrame,
   type BrowserNetworkTunnelFrameReceiver
-} from './browser-network-tunnel-frame-receiver'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-frame-receiver'
 import { createBrowserNetworkTunnelResourceBudget } from './browser-network-tunnel-resource-budget'
 import {
   BROWSER_NETWORK_TUNNEL_LEGACY_FLOW_CONTROL,
@@ -26,7 +26,7 @@ import {
   type BrowserNetworkTunnelFlowControl,
   type BrowserNetworkTunnelSessionOptions,
   type BrowserNetworkTunnelStream
-} from './browser-network-tunnel-stream-state'
+} from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 import { retireBrowserNetworkTunnelStream } from './browser-network-tunnel-stream-lifecycle'
 
 export class BrowserNetworkTunnelSession {

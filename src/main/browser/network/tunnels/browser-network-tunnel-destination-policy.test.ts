@@ -12,7 +12,7 @@ import {
   createBrowserTunnelGuardedLookup,
   reserveBrowserTunnelOrcaListenerPort
 } from './browser-network-tunnel-destination-policy'
-import type { BrowserNetworkTunnelSocket } from './browser-network-tunnel-stream-state'
+import type { BrowserNetworkTunnelSocket } from '../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 
 const cleanups: (() => void | Promise<void>)[] = []
 

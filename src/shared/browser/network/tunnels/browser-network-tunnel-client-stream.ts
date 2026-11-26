@@ -1,4 +1,8 @@
-import { BrowserNetworkTunnelDuplex } from './browser-network-tunnel-duplex'
+import type {
+  BrowserNetworkTunnelClientSocket,
+  BrowserNetworkTunnelClientSocketCallbacks,
+  BrowserNetworkTunnelClientSocketFactory
+} from './browser-network-tunnel-client-socket'
 import type { BrowserNetworkTunnelSourceFlowStream } from './browser-network-tunnel-source-flow'
 import type { BrowserNetworkTunnelSourceReceiveStream } from './browser-network-tunnel-source-receive-flow'
 import {
@@ -6,41 +10,42 @@ import {
   BROWSER_NETWORK_TUNNEL_INITIAL_WINDOW_BYTES
 } from './browser-network-tunnel-stream-state'
 
-export type BrowserNetworkTunnelClientStream = BrowserNetworkTunnelSourceFlowStream &
+export type BrowserNetworkTunnelClientStream<
+  TSocket extends BrowserNetworkTunnelClientSocket = BrowserNetworkTunnelClientSocket
+> = BrowserNetworkTunnelSourceFlowStream &
   BrowserNetworkTunnelSourceReceiveStream & {
     id: number
-    socket: BrowserNetworkTunnelDuplex
+    socket: TSocket
     closed: boolean
     localEnded: boolean
     localHalfCloseSent: boolean
     remoteClosed: boolean
     connectTimeout: ReturnType<typeof setTimeout>
-    resolveOpen: (socket: BrowserNetworkTunnelDuplex) => void
+    resolveOpen: (socket: TSocket) => void
     rejectOpen: (error: Error) => void
   }
 
-type BrowserNetworkTunnelClientStreamCallbacks = {
-  writeBytes: (bytes: Uint8Array<ArrayBufferLike>, callback: (error?: Error | null) => void) => void
-  requestRead: () => void
-  consumeReadBytes: (bytes: number) => void
-  finishWrite: (callback: (error?: Error | null) => void) => void
-  destroyStream: (error: Error | null, callback: (error?: Error | null) => void) => void
-  onConnectTimeout: (stream: BrowserNetworkTunnelClientStream) => void
-}
+type BrowserNetworkTunnelClientStreamCallbacks<TSocket extends BrowserNetworkTunnelClientSocket> =
+  BrowserNetworkTunnelClientSocketCallbacks & {
+    onConnectTimeout: (stream: BrowserNetworkTunnelClientStream<TSocket>) => void
+  }
 
-export function createBrowserNetworkTunnelClientStream(
+export function createBrowserNetworkTunnelClientStream<
+  TSocket extends BrowserNetworkTunnelClientSocket
+>(
   id: number,
   windowBytes: number,
-  callbacks: BrowserNetworkTunnelClientStreamCallbacks
-): { stream: BrowserNetworkTunnelClientStream; opening: Promise<BrowserNetworkTunnelDuplex> } {
-  let resolveOpen = (_socket: BrowserNetworkTunnelDuplex): void => {}
+  createSocket: BrowserNetworkTunnelClientSocketFactory<TSocket>,
+  callbacks: BrowserNetworkTunnelClientStreamCallbacks<TSocket>
+): { stream: BrowserNetworkTunnelClientStream<TSocket>; opening: Promise<TSocket> } {
+  let resolveOpen = (_socket: TSocket): void => {}
   let rejectOpen = (_error: Error): void => {}
-  const opening = new Promise<BrowserNetworkTunnelDuplex>((resolve, reject) => {
+  const opening = new Promise<TSocket>((resolve, reject) => {
     resolveOpen = resolve
     rejectOpen = reject
   })
-  const socket = new BrowserNetworkTunnelDuplex(callbacks)
-  const stream: BrowserNetworkTunnelClientStream = {
+  const socket = createSocket(callbacks)
+  const stream: BrowserNetworkTunnelClientStream<TSocket> = {
     id,
     socket,
     windowBytes,

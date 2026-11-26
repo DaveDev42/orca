@@ -4,7 +4,7 @@ import { BrowserNetworkTunnelSession } from '../main/browser/network/tunnels/bro
 import {
   BROWSER_NETWORK_RELAY_FLOW_CONTROL,
   BROWSER_NETWORK_RELAY_WRITER_LIMITS
-} from '../main/browser/network/tunnels/browser-network-tunnel-stream-state'
+} from '../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 import {
   BrowserNetworkTunnelStreamFrameDecoder,
   BrowserNetworkTunnelStreamFrameWriter

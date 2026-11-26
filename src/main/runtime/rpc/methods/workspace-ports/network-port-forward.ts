@@ -4,7 +4,7 @@ import {
   BROWSER_NETWORK_TUNNEL_LEGACY_FLOW_CONTROL,
   BROWSER_NETWORK_TUNNEL_WINDOW_V2_FLOW_CONTROL,
   type BrowserNetworkTunnelSessionOptions
-} from '../../../../browser/network/tunnels/browser-network-tunnel-stream-state'
+} from '../../../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 import { connectNativeLoopbackTarget } from '../../../../browser/network/execution-routes/browser-network-execution-route'
 import { BrowserTunnelDestinationBlockedError } from '../../../../browser/network/tunnels/browser-network-tunnel-destination-policy'
 import { BROWSER_NETWORK_TUNNEL_WINDOW_V2_CAPABILITY } from '../../../../../shared/browser/runtime/browser-runtime-capabilities'

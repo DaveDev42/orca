@@ -1,4 +1,3 @@
-import { performance } from 'node:perf_hooks'
 import {
   BROWSER_NETWORK_TUNNEL_INITIAL_WINDOW_BYTES,
   type BrowserNetworkTunnelFlowControl

@@ -1,5 +1,5 @@
 import { createServer, type Server, type Socket } from 'node:net'
-import { BROWSER_NETWORK_TUNNEL_MAX_STREAMS } from '../../browser/network/tunnels/browser-network-tunnel-stream-state'
+import { BROWSER_NETWORK_TUNNEL_MAX_STREAMS } from '../../../shared/browser/network/tunnels/browser-network-tunnel-stream-state'
 import { reserveBrowserTunnelOrcaListenerPort } from '../../browser/network/tunnels/browser-network-tunnel-destination-policy'
 import { pipeUpstreamToClient } from '../../browser/network/tunnels/remote-browser-socks-upstream'
 import {
