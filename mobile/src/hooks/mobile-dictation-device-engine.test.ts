@@ -7,6 +7,7 @@ import {
 } from './mobile-dictation-device-engine'
 
 function speechWith(status: { preference: string; status: string }): OnDeviceSpeech {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the stub implements only the methods under test
   return {
     status: vi.fn(async () => status),
     start: vi.fn(),
@@ -22,13 +23,19 @@ describe('peekMobileDictationHostRoute', () => {
   })
 
   it('remembers a computer answer so the next start does not wait on the status', async () => {
-    const speech = speechWith({ preference: 'computer', status: 'ready' })
-    expect(peekMobileDictationHostRoute(speech)).toBeNull()
-    await chooseMobileDictationRoute(speech)
-    expect(peekMobileDictationHostRoute(speech)).toEqual({ kind: 'host' })
-    expect(
-      peekMobileDictationHostRoute(speech, Date.now() + MOBILE_DICTATION_HOST_ROUTE_TTL_MS + 1)
-    ).toBeNull()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(1_000_000)
+    try {
+      const speech = speechWith({ preference: 'computer', status: 'ready' })
+      expect(peekMobileDictationHostRoute(speech)).toBeNull()
+      await chooseMobileDictationRoute(speech)
+      expect(peekMobileDictationHostRoute(speech)).toEqual({ kind: 'host' })
+      expect(
+        peekMobileDictationHostRoute(speech, 1_000_000 + MOBILE_DICTATION_HOST_ROUTE_TTL_MS + 1)
+      ).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('never remembers a phone route, and a later phone answer forgets the computer', async () => {
@@ -39,6 +46,7 @@ describe('peekMobileDictationHostRoute', () => {
     const switching = speechWith({ preference: 'computer', status: 'ready' })
     await chooseMobileDictationRoute(switching)
     expect(peekMobileDictationHostRoute(switching)).toEqual({ kind: 'host' })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a partial status is enough for the route choice
     vi.mocked(switching.status).mockResolvedValueOnce({
       preference: 'automatic',
       status: 'ready'
@@ -49,6 +57,8 @@ describe('peekMobileDictationHostRoute', () => {
 
   it('does not trust another recognizer instance', async () => {
     await chooseMobileDictationRoute(speechWith({ preference: 'computer', status: 'ready' }))
-    expect(peekMobileDictationHostRoute(speechWith({ preference: 'computer', status: 'ready' }))).toBeNull()
+    expect(
+      peekMobileDictationHostRoute(speechWith({ preference: 'computer', status: 'ready' }))
+    ).toBeNull()
   })
 })

@@ -52,6 +52,7 @@ export function usePageKeyCommands(
               ? keyCommandsForDigitAction(action.actionId, action.title, context)
               : keyCommandsForAction(
                   action.actionId,
+                  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: an action without onDigit always carries a string title
                   action.title as string,
                   context,
                   undefined,
