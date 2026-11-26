@@ -1,4 +1,5 @@
 import { resolveArtifactCloudApiUrl } from '../../artifacts/artifact-cloud-config'
+import { accountRelayFetch } from '../../network/env-proxy-transport'
 import { createSkillCloudDeadline } from './skill-cloud-deadline'
 import { SKILL_CLOUD_UNCODED_ERROR, SkillCloudRequestError } from './skill-cloud-request-error'
 
@@ -24,7 +25,7 @@ export async function skillCloudRequest<T>(input: {
     timeoutMessage: 'skill-cloud-request-timeout'
   })
   try {
-    const response = await (input.fetcher ?? fetch)(url, {
+    const response = await (input.fetcher ?? accountRelayFetch())(url, {
       method: input.method ?? 'GET',
       headers: {
         ...(input.authToken ? { authorization: `Bearer ${input.authToken}` } : {}),

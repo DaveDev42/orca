@@ -1,4 +1,5 @@
 import type { OrcaAccountMachinePlatform } from '../../shared/orca-account-server-sign-in'
+import { accountRelayFetch } from '../network/env-proxy-transport'
 import type { OrcaCloudAuthConfig } from './cloud-auth/profile-cloud-auth-config'
 
 const REQUEST_TIMEOUT_MS = 15_000
@@ -123,7 +124,7 @@ async function post(
 ): Promise<{ status: number; json: unknown }> {
   let response: Response
   try {
-    response = await fetch(new URL(path, `${config.apiBaseUrl}/`), {
+    response = await accountRelayFetch()(new URL(path, `${config.apiBaseUrl}/`), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
