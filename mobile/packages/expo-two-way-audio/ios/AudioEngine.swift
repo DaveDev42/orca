@@ -1,5 +1,16 @@
 import AVFoundation
 import Foundation
+import os.log
+
+// Every AVAudioSession call and route notification is logged with the [orca-audio] prefix (Console.app, process
+// filter on the app). A clean dictation start shows: setCategory, setPreferredSampleRate, setActive(true), ONE route
+// change into the Bluetooth HFP input, engine start. Anything more is a flap.
+private let orcaAudioLog = OSLog(subsystem: "com.davedev42.orca.mobile", category: "orca-audio")
+
+private func orcaAudioLogLine(_ message: String) {
+    os_log("[orca-audio] %{public}@", log: orcaAudioLog, type: .default, message)
+    NSLog("[orca-audio] %@", message)
+}
 
 class AudioEngine {
     private var avAudioEngine = AVAudioEngine()
@@ -7,6 +18,7 @@ class AudioEngine {
     private var sessionInterruptionObserver: Any?
     private var mediaServicesResetObserver: Any?
     private var routeChangeObserver: Any?
+    private var pendingEngineRestart: DispatchWorkItem?
 
     public private(set) var voiceIOFormat: AVAudioFormat
     public private(set) var isRecording = false
@@ -46,7 +58,7 @@ class AudioEngine {
             forName: .AVAudioEngineConfigurationChange,
             object: avAudioEngine,
             queue: .main) { [weak self] _ in
-                self?.checkEngineIsRunning()
+                self?.handleEngineConfigurationChange()
             }
         sessionInterruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification,
@@ -69,12 +81,18 @@ class AudioEngine {
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(),
             queue: .main) { notification in
-                // Diagnostic: a clean start logs one route change into the Bluetooth HFP input.
+                // Log only. Reacting to a route change we caused ourselves would renegotiate the link again.
                 let reason = (notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
                 let route = AVAudioSession.sharedInstance().currentRoute
                 let inputs = route.inputs.map { $0.portType.rawValue }.joined(separator: ",")
                 let outputs = route.outputs.map { $0.portType.rawValue }.joined(separator: ",")
-                print("[AudioEngine] route change reason=\(reason) in=[\(inputs)] out=[\(outputs)]")
+                var previous = ""
+                if let prev = notification.userInfo?[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription {
+                    let pin = prev.inputs.map { $0.portType.rawValue }.joined(separator: ",")
+                    let pout = prev.outputs.map { $0.portType.rawValue }.joined(separator: ",")
+                    previous = " prev-in=[\(pin)] prev-out=[\(pout)]"
+                }
+                orcaAudioLogLine("route change reason=\(reason) in=[\(inputs)] out=[\(outputs)]\(previous)")
             }
         self.configureAudioSession()
         do {
@@ -113,13 +131,15 @@ class AudioEngine {
         do {
             // One category/mode/options write. Only HFP is needed (the mic is the Bluetooth hands-free input);
             // allowBluetoothA2DP adds a second Bluetooth profile the car would negotiate for nothing here.
+            orcaAudioLogLine("setCategory playAndRecord voiceChat [defaultToSpeaker, allowBluetooth]")
             try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
         } catch {
-            print("Could not set the audio category: \(error.localizedDescription)")
+            orcaAudioLogLine("setCategory failed: \(error.localizedDescription)")
         }
 
         // iOS mutes haptics while input runs by default; dictation taps the user on start and stop.
         do {
+            orcaAudioLogLine("setAllowHapticsAndSystemSoundsDuringRecording true")
             try session.setAllowHapticsAndSystemSoundsDuringRecording(true)
         } catch {
             print("Could not allow haptics during recording: \(error.localizedDescription)")
@@ -127,6 +147,7 @@ class AudioEngine {
 
         // Still inactive here, so this only seeds the activation below; it is never a renegotiation on a live link.
         do {
+            orcaAudioLogLine("setPreferredSampleRate \(voiceIOFormat.sampleRate)")
             try session.setPreferredSampleRate(voiceIOFormat.sampleRate)
         } catch {
             print("Could not set the preferred sample rate: \(error.localizedDescription)")
@@ -138,16 +159,19 @@ class AudioEngine {
         AudioEngine.pendingDeactivation?.cancel()
         AudioEngine.pendingDeactivation = nil
         do {
+            orcaAudioLogLine("setActive true (activate)")
             try AVAudioSession.sharedInstance().setActive(true)
             sessionActive = true
         } catch {
-            print("Could not set the audio session as active")
+            orcaAudioLogLine("setActive true failed: \(error)")
         }
     }
 
     func setup() throws {
         let input = avAudioEngine.inputNode
         // Throw rather than return: an engine with no mic tap would report recording and capture nothing.
+        // Still before activation: enabling voice processing on a live session renegotiates the route.
+        orcaAudioLogLine("setVoiceProcessingEnabled true (session active=\(sessionActive))")
         try input.setVoiceProcessingEnabled(true)
 
         avAudioEngine.inputNode.isVoiceProcessingInputMuted = !isRecording
@@ -164,7 +188,8 @@ class AudioEngine {
             }
         }
 
-        avAudioEngine.prepare()
+        // No prepare() here: it initialises the voice-processing I/O unit, which can claim the Bluetooth route
+        // before the explicit activation. start() prepares as part of the one activation sequence.
     }
 
     private static func makeCueBuffer(format: AVAudioFormat, frequency: Double, seconds: Double, gain: Float) -> AVAudioPCMBuffer? {
@@ -216,9 +241,10 @@ class AudioEngine {
     func start() {
         guard !isTornDown else { return }
         do {
+            orcaAudioLogLine("engine start")
             try avAudioEngine.start()
         } catch {
-            print("Could not start audio engine: \(error)")
+            orcaAudioLogLine("engine start failed: \(error)")
         }
     }
 
@@ -235,20 +261,22 @@ class AudioEngine {
         }
         if val {
             do {
-                // System keyboard dictation can leave an existing engine's session inactive; a warm engine from a
-                // previous dictation is still active, and re-activating it on every start only gives the car a chance
-                // to renegotiate.
-                if !sessionActive || !avAudioEngine.isRunning {
+                // Only re-activate a session that really went inactive (interruption, system keyboard dictation). A
+                // stopped engine does not mean an inactive session: the engine's own start follows an async route
+                // change, and a second setActive(true) on top of it is one more call-mode negotiation.
+                if !sessionActive {
+                    orcaAudioLogLine("setActive true (re-activate, session was lost)")
                     try AVAudioSession.sharedInstance().setActive(true)
                     sessionActive = true
                 }
                 if !avAudioEngine.isRunning {
+                    orcaAudioLogLine("engine start (toggleRecording)")
                     try avAudioEngine.start()
                 }
             } catch {
                 isRecording = false
                 avAudioEngine.inputNode.isVoiceProcessingInputMuted = true
-                print("Could not activate microphone recording: \(error)")
+                orcaAudioLogLine("could not activate microphone recording: \(error)")
                 return false
             }
         }
@@ -267,7 +295,7 @@ class AudioEngine {
         } else {
             avAudioEngine.inputNode.isVoiceProcessingInputMuted = false
         }
-        print("Recording \(isRecording ? "started" : "stopped")")
+        orcaAudioLogLine("recording \(isRecording ? "started" : "stopped")")
 
         return isRecording
     }
@@ -286,9 +314,10 @@ class AudioEngine {
         AudioEngine.pendingDeactivation = nil
         sessionActive = false
         do {
+            orcaAudioLogLine("setActive false notifyOthersOnDeactivation (release)")
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
-            print("Could not set the audio session to inactive: \(error)")
+            orcaAudioLogLine("setActive false failed: \(error)")
         }
     }
 
@@ -299,9 +328,10 @@ class AudioEngine {
         let work = DispatchWorkItem {
             AudioEngine.pendingDeactivation = nil
             do {
+                orcaAudioLogLine("setActive false notifyOthersOnDeactivation (linger release)")
                 try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             } catch {
-                print("Could not set the audio session to inactive: \(error)")
+                orcaAudioLogLine("setActive false failed: \(error)")
             }
         }
         AudioEngine.pendingDeactivation = work
@@ -311,6 +341,9 @@ class AudioEngine {
     func tearDown() {
         guard !isTornDown else { return }
         isTornDown = true
+        pendingEngineRestart?.cancel()
+        pendingEngineRestart = nil
+        orcaAudioLogLine("tearDown")
         // Stop I/O first; deactivating a session with running I/O returns a busy error. Drop the input tap and give
         // the session back right away (notifyOthersOnDeactivation): a lingering session keeps a Bluetooth car in
         // call mode and other apps' music stays stopped.
@@ -319,11 +352,21 @@ class AudioEngine {
         stopRecording()
     }
 
-    private func checkEngineIsRunning() {
-        guard !isTornDown else { return }
-        if !avAudioEngine.isRunning {
-            start()
+    // The engine posts this after our own activation/start (the route moved to HFP) and when the route changes under
+    // us. It never touches the session: a running engine needs nothing, and a stopped one is restarted once after the
+    // route has settled, so our own change cannot loop into another rebuild.
+    private func handleEngineConfigurationChange() {
+        orcaAudioLogLine("engine configuration change running=\(avAudioEngine.isRunning) torn-down=\(isTornDown)")
+        guard !isTornDown, !avAudioEngine.isRunning, pendingEngineRestart == nil else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.pendingEngineRestart = nil
+            if !self.isTornDown && !self.avAudioEngine.isRunning {
+                self.start()
+            }
         }
+        pendingEngineRestart = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
     }
 
     private func handleAudioSessionInterruption(_ notification: Notification) {
@@ -334,13 +377,17 @@ class AudioEngine {
 
         switch type {
         case .began:
+            orcaAudioLogLine("interruption began")
+            // The system has already deactivated the session; our own setActive(false) on top of it is one more
+            // call-to-media switch before the matching resume switches back.
             sessionActive = false
             interruptionIntent.began(wasRecording: isRecording)
-            self.stopRecording(clearInterruptionResume: false)
+            _ = toggleRecording(false, preservingInterruptionIntent: true)
             onAudioInterruptionCallback?("began")
         case .ended:
             let rawOptions = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
             let shouldResume = AVAudioSession.InterruptionOptions(rawValue: rawOptions).contains(.shouldResume)
+            orcaAudioLogLine("interruption ended shouldResume=\(shouldResume)")
             switch interruptionIntent.ended(shouldResume: shouldResume, isRecording: isRecording) {
             case .resume:
                 let resumed = toggleRecording(true)
@@ -358,6 +405,7 @@ class AudioEngine {
 
     private func handleMediaServicesWereReset() {
         guard !isTornDown else { return }
+        orcaAudioLogLine("media services were reset")
         sessionActive = false
         self.avAudioEngine.stop()
         // A media-services reset drops the category too, so rebuild in the same inactive-then-activate order.

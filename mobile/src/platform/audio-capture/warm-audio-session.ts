@@ -23,7 +23,11 @@ export type WarmAudioSession = {
   readonly begin: () => boolean
   /** Mutes the microphone and keeps the engine warm only for the grace period. */
   readonly end: () => void
-  /** Releases the engine now, unless a dictation is recording (its end starts the grace period). */
+  /**
+   * Releases the engine now, unless a dictation is starting or recording (its end starts the grace period). The
+   * keyboard hiding when the dictation button is pressed lands between open and begin; releasing there tears the
+   * session down and the start brings it right back up, which a Bluetooth car shows as call/media/call flapping.
+   */
   readonly releaseIfIdle: () => void
   /** Releases the engine now. */
   readonly release: () => void
@@ -33,6 +37,8 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
   const graceMs = deps.graceMs ?? WARM_AUDIO_GRACE_MS
   let graceTimer: unknown = null
   let recording = false
+  // True from open() until end()/release(): a dictation owns the session even before the mic is on.
+  let starting = false
   let warm = false
   let stopWatchingBackground: (() => void) | null = null
 
@@ -48,6 +54,7 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
     stopWatchingBackground?.()
     stopWatchingBackground = null
     recording = false
+    starting = false
     if (!warm) {
       return
     }
@@ -67,7 +74,9 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
 
   async function ensureWarm(): Promise<boolean> {
     cancelGrace()
+    starting = true
     if (!(await deps.initialize())) {
+      starting = false
       return false
     }
     warm = true
@@ -89,6 +98,7 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
     },
     end: () => {
       recording = false
+      starting = false
       if (!warm) {
         return
       }
@@ -100,7 +110,7 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
       scheduleGraceRelease()
     },
     releaseIfIdle: () => {
-      if (!recording) {
+      if (!recording && !starting) {
         release()
       }
     },
