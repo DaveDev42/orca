@@ -10,6 +10,7 @@ type ExpoTwoWayAudioWebModule = {
   toggleRecording: (val: boolean) => boolean
   isRecording: () => boolean
   tearDown: () => void
+  audioLog?: (message: string) => void
   restart: () => void
   getMicrophonePermissionsAsync: () => Promise<PermissionResponse>
   requestMicrophonePermissionsAsync: () => Promise<PermissionResponse>
@@ -34,6 +35,7 @@ const ExpoTwoWayAudioModule: ExpoTwoWayAudioWebModule = {
   toggleRecording: () => false,
   isRecording: () => false,
   tearDown: noop,
+  audioLog: noop,
   restart: noop,
   getMicrophonePermissionsAsync: async () => deniedMicrophonePermission,
   requestMicrophonePermissionsAsync: async () => deniedMicrophonePermission,

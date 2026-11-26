@@ -7,7 +7,7 @@ import os.log
 // change into the Bluetooth HFP input, engine start. Anything more is a flap.
 private let orcaAudioLog = OSLog(subsystem: "com.davedev42.orca.mobile", category: "orca-audio")
 
-private func orcaAudioLogLine(_ message: String) {
+func orcaAudioLogLine(_ message: String) {
     os_log("[orca-audio] %{public}@", log: orcaAudioLog, type: .default, message)
     NSLog("[orca-audio] %@", message)
 }

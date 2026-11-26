@@ -38,7 +38,7 @@ export function useNativeDeviceVerbs(
   // the music). The keyboard going away is the page composer's blur: hand the session back unless it is recording.
   useEffect(() => {
     const subscription = Keyboard.addListener('keyboardDidHide', () => {
-      nativeWarmAudioSession.releaseIfIdle()
+      nativeWarmAudioSession.releaseIfIdle('keyboard-hide')
     })
     return () => subscription.remove()
   }, [])

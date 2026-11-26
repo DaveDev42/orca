@@ -17,6 +17,16 @@ export function isRecording(): boolean {
   return ExpoTwoWayAudioModule.isRecording()
 }
 
+// Writes one `[orca-audio] js: ...` line to the device log. Never throws and does nothing where the native module
+// has no such function (web, Android, older binaries).
+export function audioLog(message: string): void {
+  try {
+    ExpoTwoWayAudioModule.audioLog?.(message)
+  } catch {
+    // Logging is best effort.
+  }
+}
+
 export function tearDown() {
   return ExpoTwoWayAudioModule.tearDown()
 }

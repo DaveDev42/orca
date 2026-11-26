@@ -43,6 +43,10 @@ export function useMobileDictation(options: UseMobileDictationOptions): UseMobil
   const speech = useOnDeviceSpeech(removeFillerWords, dictationTerms)
   useMobileDictationPrewarm(capture, speech, enabled)
   const [status, setStatus] = useState<DictationStatus>('idle')
+  // Phase changes into the device log, so a stuck audio session can be matched to the dictation that owned it.
+  useEffect(() => {
+    capture.log?.(`native-dictation status=${status}`)
+  }, [capture, status])
   const [error, setError] = useState<string | null>(null)
   // A failure whose recording is kept for Retry; cleared by Retry, discard and the next dictation.
   const [failure, setFailure] = useState<MobileDictationKeptFailure | null>(null)

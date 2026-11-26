@@ -19,6 +19,8 @@ export type NativeAudioEngine = {
   readonly open: (sampleRate: number) => Promise<{ opened: boolean; sampleRate: number }>
   readonly begin: () => boolean
   readonly end: () => void
+  // Best-effort device log line, so the log names the page verb that touched the audio session.
+  readonly log?: (message: string) => void
   // Hold the screen with an open mic because locking suspends capture; inject the device wake API for tests.
   readonly screenLock: MicrophoneScreenLock
   readonly onMicrophoneData: (handler: (bytes: Uint8Array) => void) => { remove: () => void }
@@ -214,18 +216,26 @@ export function createNativeAudioCapture(engine: NativeAudioEngine): NativeAudio
   return {
     serve: async (verb, params) => {
       if (verb === 'native.audio.start') {
-        return enqueue(() => start(params))
+        engine.log?.('page native.audio.start requested')
+        return enqueue(async () => {
+          const result = await start(params)
+          engine.log?.(`page native.audio.start done ${JSON.stringify(result)}`)
+          return result
+        })
       }
       if (verb === 'native.audio.read') {
         return read(params)
       }
       audioStopParamsSchema.parse(params)
+      engine.log?.('page native.audio.stop requested')
       // Queue stop behind start so it cannot miss an opening capture.
       return enqueue(async () => {
         // Drain before end destroys the ring, preserving audio since the last page read.
         const drained = capture?.ring.drain(BRIDGE_AUDIO_RING_MAX_BYTES)
+        const stopped = end()
+        engine.log?.(`page native.audio.stop done stopped=${stopped}`)
         return {
-          stopped: end(),
+          stopped,
           base64: drained === undefined ? '' : encodeBase64Bytes(drained.bytes),
           droppedBytes: drained?.droppedBytes ?? 0
         }
@@ -233,6 +243,7 @@ export function createNativeAudioCapture(engine: NativeAudioEngine): NativeAudio
     },
     dispose: () => {
       disposed = true
+      engine.log?.('page native.audio.dispose')
       end()
     }
   }
