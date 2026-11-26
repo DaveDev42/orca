@@ -9,11 +9,14 @@ enum SpikeStores {
   private static var stores: [String: AnyObject] = [:]
 
   @available(iOS 17.0, *)
-  static func store(useProxy: Bool, applyCredential: Bool) -> WKWebsiteDataStore {
-    let key = useProxy ? (applyCredential ? "proxy-cred" : "proxy") : "direct"
+  static func store(useProxy: Bool, applyCredential: Bool, nonce: Int) -> WKWebsiteDataStore {
+    let key = (useProxy ? (applyCredential ? "proxy-cred" : "proxy") : "direct") + "-\(nonce)"
     if let existing = stores[key] as? WKWebsiteDataStore { return existing }
+    // nonce 0 keeps the original identifiers; a non-zero nonce is a brand-new store (cold network session).
     let suffix = useProxy ? (applyCredential ? "03" : "02") : "01"
-    let store = WKWebsiteDataStore(forIdentifier: UUID(uuidString: "A5B1E5E0-0000-4000-8000-0000000000\(suffix)")!)
+    let tail = nonce == 0 ? "0000000000\(suffix)" : String(format: "%012lX", (nonce << 8) | Int(suffix)!)
+    let group = nonce == 0 ? "8000" : "8001"
+    let store = WKWebsiteDataStore(forIdentifier: UUID(uuidString: "A5B1E5E0-0000-4000-\(group)-\(tail)")!)
     if useProxy {
       let port = (try? SpikeProxy.shared.start()) ?? 0
       if let nwPort = NWEndpoint.Port(rawValue: port), port != 0 {
@@ -73,6 +76,7 @@ final class OrcaSpikeWebView: ExpoView, WKNavigationDelegate, WKDownloadDelegate
   var useProxy = true
   var applyCredential = false
   var blockWebRTC = false
+  var storeNonce = 0
   var acceptBadCerts = false
   private var webView: WKWebView?
 
@@ -83,7 +87,7 @@ final class OrcaSpikeWebView: ExpoView, WKNavigationDelegate, WKDownloadDelegate
     configuration.mediaTypesRequiringUserActionForPlayback = []
     var storeNote = "default store (iOS < 17)"
     if #available(iOS 17.0, *) {
-      configuration.websiteDataStore = SpikeStores.store(useProxy: useProxy, applyCredential: applyCredential)
+      configuration.websiteDataStore = SpikeStores.store(useProxy: useProxy, applyCredential: applyCredential, nonce: storeNonce)
       storeNote = "forIdentifier store, \(configuration.websiteDataStore.proxyConfigurations.count) proxyConfigurations"
     }
     let controller = WKUserContentController()
@@ -118,12 +122,29 @@ final class OrcaSpikeWebView: ExpoView, WKNavigationDelegate, WKDownloadDelegate
     onSpikeEvent(payload)
   }
 
-  func loadUrl(_ value: String) {
+  /// Navigation ids let the JS side ignore finish/fail events from an earlier navigation.
+  private var nextNavId = 1
+  private var navIds: [(WKNavigation, Int)] = []
+
+  private func navId(for navigation: WKNavigation?) -> Int? {
+    guard let navigation else { return nil }
+    return navIds.first { $0.0 === navigation }?.1
+  }
+
+  func loadUrl(_ value: String) -> Int {
+    let id = nextNavId
+    nextNavId += 1
     guard let url = URL(string: value) else {
-      emit(["kind": "nav", "phase": "fail", "url": value, "error": "bad url", "code": 0])
-      return
+      emit(["kind": "nav", "phase": "fail", "url": value, "error": "bad url", "code": 0, "navId": id])
+      return id
     }
-    webView?.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30))
+    if let navigation = webView?.load(
+      URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30))
+    {
+      navIds.append((navigation, id))
+      if navIds.count > 16 { navIds.removeFirst(navIds.count - 16) }
+    }
+    return id
   }
 
   func loadHtml(_ html: String, baseUrl: String) {
@@ -142,8 +163,11 @@ final class OrcaSpikeWebView: ExpoView, WKNavigationDelegate, WKDownloadDelegate
     emit(["kind": "page", "json": json])
   }
 
-  private func navPayload(_ phase: String, _ webView: WKWebView, error: Error? = nil) -> [String: Any] {
+  private func navPayload(
+    _ phase: String, _ webView: WKWebView, navigation: WKNavigation? = nil, error: Error? = nil
+  ) -> [String: Any] {
     var payload: [String: Any] = ["kind": "nav", "phase": phase, "url": webView.url?.absoluteString ?? ""]
+    if let id = navId(for: navigation) { payload["navId"] = id }
     if let error = error as NSError? {
       payload["error"] = error.localizedDescription
       payload["code"] = error.code
@@ -155,19 +179,19 @@ final class OrcaSpikeWebView: ExpoView, WKNavigationDelegate, WKDownloadDelegate
   // MARK: WKNavigationDelegate
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-    emit(navPayload("start", webView))
+    emit(navPayload("start", webView, navigation: navigation))
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    emit(navPayload("finish", webView))
+    emit(navPayload("finish", webView, navigation: navigation))
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-    emit(navPayload("fail", webView, error: error))
+    emit(navPayload("fail", webView, navigation: navigation, error: error))
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    emit(navPayload("fail", webView, error: error))
+    emit(navPayload("fail", webView, navigation: navigation, error: error))
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {

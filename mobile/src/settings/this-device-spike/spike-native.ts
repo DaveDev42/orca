@@ -50,12 +50,13 @@ export type SpikeWebViewProps = ViewProps & {
   useProxy: boolean
   applyCredential: boolean
   blockWebRTC: boolean
+  storeNonce: number
   acceptBadCerts: boolean
   onSpikeEvent: (event: NativeSyntheticEvent<Record<string, unknown>>) => void
 }
 
 export type SpikeWebViewHandle = {
-  loadUrl: (url: string) => Promise<void>
+  loadUrl: (url: string) => Promise<number>
   loadHtml: (html: string, baseUrl: string) => Promise<void>
 }
 

@@ -62,6 +62,23 @@ describe('judgeWebRtc', () => {
     )
     expect(leak.status).toBe('fail')
     expect(judgeWebRtc({ hasRTC: true, candidates: [] }, false).status).toBe('pass')
+    const hostOnly = judgeWebRtc(
+      {
+        hasRTC: true,
+        candidates: [
+          { type: 'host', protocol: 'udp', address: 'abc.local' },
+          { type: 'host', protocol: 'udp', address: '192.168.0.2' }
+        ]
+      },
+      false
+    )
+    expect(hostOnly.status).toBe('pass')
+    expect(hostOnly.detail).toContain('host=2')
+    const relay = judgeWebRtc(
+      { hasRTC: true, candidates: [{ type: 'relay', protocol: 'udp', address: '5.6.7.8' }] },
+      false
+    )
+    expect(relay.status).toBe('fail')
     expect(judgeWebRtc({ hasRTC: false, candidates: [] }, true).status).toBe('pass')
     expect(judgeWebRtc({ hasRTC: true, candidates: [] }, true).status).toBe('fail')
   })

@@ -10,7 +10,10 @@ export type SpikeContext = {
   events: SpikeEventLog
   entryMark: () => number
   entriesSince: (mark: number) => SpikeProxyEntry[]
-  loadUrl: (url: string) => Promise<void>
+  /** Resolves to the native navigation id; its nav events carry the same `navId`. */
+  loadUrl: (url: string) => Promise<number>
+  /** Remounts the WebView on a brand-new WKWebsiteDataStore (new network session, no cached proxy credential). */
+  freshStore: () => Promise<void>
   /** A page from the local server; falls back to inline HTML when the local server cannot be loaded. */
   loadPage: (name: string, query?: string) => Promise<void>
   isLocalReachable: () => boolean
@@ -77,11 +80,13 @@ export async function loadAndWait(
   timeoutMs = 20000
 ): Promise<NavOutcome> {
   const mark = context.events.length
-  await context.loadUrl(url)
+  const navId = await context.loadUrl(url)
   const hit = await context.events.wait(
     mark,
     (event) =>
       event.kind === 'nav' &&
+      // Ignore finish/fail events that belong to an earlier navigation.
+      event.navId === navId &&
       (event.phase === 'finish' || event.phase === 'fail' || event.phase === 'terminated'),
     timeoutMs
   )

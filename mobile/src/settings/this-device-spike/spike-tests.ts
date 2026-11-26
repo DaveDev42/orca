@@ -1,5 +1,6 @@
 import {
-  runAuth,
+  runAuthCold,
+  runAuthWarm,
   runDownload,
   runHttps,
   runLocalhost,
@@ -33,9 +34,15 @@ export const SPIKE_TESTS: readonly SpikeTestDefinition[] = [
   },
   {
     id: 'auth',
-    title: '2b. 407 auth reliability (5 cold hosts)',
+    title: '2b. 407 auth reliability (5 cold rounds, fresh store each)',
     decides: 'If FAIL, the credential scheme cannot be trusted: hold the feature.',
-    run: runAuth
+    run: runAuthCold
+  },
+  {
+    id: 'auth-warm',
+    title: '2b-warm. 407 auth, 5 hosts in one store (credential cached)',
+    decides: 'Reference only: shows steady-state behavior after the first 407.',
+    run: runAuthWarm
   },
   {
     id: 'websocket',

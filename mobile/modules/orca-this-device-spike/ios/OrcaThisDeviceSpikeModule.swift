@@ -74,10 +74,11 @@ public class OrcaThisDeviceSpikeModule: Module {
 
       Prop("useProxy") { (view: OrcaSpikeWebView, value: Bool) in view.useProxy = value }
       Prop("applyCredential") { (view: OrcaSpikeWebView, value: Bool) in view.applyCredential = value }
+      Prop("storeNonce") { (view: OrcaSpikeWebView, value: Int) in view.storeNonce = value }
       Prop("blockWebRTC") { (view: OrcaSpikeWebView, value: Bool) in view.blockWebRTC = value }
       Prop("acceptBadCerts") { (view: OrcaSpikeWebView, value: Bool) in view.acceptBadCerts = value }
 
-      AsyncFunction("loadUrl") { (view: OrcaSpikeWebView, url: String) in
+      AsyncFunction("loadUrl") { (view: OrcaSpikeWebView, url: String) -> Int in
         view.loadUrl(url)
       }.runOnQueue(.main)
 

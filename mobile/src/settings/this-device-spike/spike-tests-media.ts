@@ -58,10 +58,21 @@ export function judgeWebRtc(message: PageMessage, blockExpected: boolean): Spike
   if (message.hasRTC === false) {
     return verdict(true, `no RTCPeerConnection in this WebView; ${ip}`)
   }
-  const leaked = candidates.length > 0
+  // host and mDNS candidates are local interface addresses and appear even when nothing leaves the device.
+  // Only srflx (answered by the STUN server) and relay (TURN) prove traffic left outside the proxy.
+  const counts: Record<string, number> = {}
+  for (const candidate of candidates) {
+    const type = candidate.type ?? 'unknown'
+    counts[type] = (counts[type] ?? 0) + 1
+  }
+  const countText =
+    Object.entries(counts)
+      .map(([type, count]) => `${type}=${count}`)
+      .join(' ') || 'none'
+  const leaked = (counts.srflx ?? 0) + (counts.relay ?? 0) > 0
   return verdict(
     !leaked,
-    `${leaked ? 'LEAK: ICE gathered over UDP outside the proxy' : 'no candidates gathered'}; candidates: ${summary}; ${ip}`
+    `${leaked ? 'LEAK: srflx/relay candidates came back from the STUN server outside the proxy' : 'no srflx/relay candidates (host/mDNS alone do not leave the device)'}; counts: ${countText}; candidates: ${summary}; ${ip}`
   )
 }
 

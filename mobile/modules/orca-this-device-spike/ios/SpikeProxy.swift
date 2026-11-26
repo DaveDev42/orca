@@ -33,11 +33,26 @@ final class SpikeProxy {
 
   private static func randomToken() -> String {
     var bytes = [UInt8](repeating: 0, count: 32)
-    _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+    // Fail closed: never fall back to a predictable (all-zero) credential.
+    guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+      fatalError("SecRandomCopyBytes failed; refusing to start the spike proxy")
+    }
     return Data(bytes).base64EncodedString()
       .replacingOccurrences(of: "+", with: "A")
       .replacingOccurrences(of: "/", with: "B")
       .replacingOccurrences(of: "=", with: "")
+  }
+
+  /// Compares without returning early on the first differing byte.
+  func authorizationMatches(_ candidate: String?) -> Bool {
+    guard let candidate else { return false }
+    let a = Array(candidate.utf8)
+    let b = Array(expectedAuthorization.utf8)
+    var diff = UInt8(truncatingIfNeeded: a.count ^ b.count)
+    for index in 0..<max(a.count, b.count) {
+      diff |= (index < a.count ? a[index] : 0) ^ (index < b.count ? b[index] : 0)
+    }
+    return diff == 0
   }
 
   var expectedAuthorization: String {
@@ -183,7 +198,7 @@ final class SpikeProxyConnection {
     let authorization = headers.first { $0.0.lowercased() == "proxy-authorization" }?.1
     let label = method == "CONNECT" ? uri : (URL(string: uri).flatMap(Self.hostPort) ?? uri)
 
-    guard authorization == proxy.expectedAuthorization else {
+    guard proxy.authorizationMatches(authorization) else {
       authFailures += 1
       let state = authorization == nil ? "none" : "bad"
       proxy.record(kind: "407", target: label, auth: state, extra: "attempt=\(authFailures) conn=\(id)")

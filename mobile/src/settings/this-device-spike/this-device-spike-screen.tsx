@@ -37,6 +37,7 @@ export default function ThisDeviceSpikeScreen({ onBack }: { onBack: () => void }
   const [useProxy, setUseProxy] = useState(true)
   const [applyCredential, setApplyCredential] = useState(false)
   const [blockWebRTC, setBlockWebRTC] = useState(false)
+  const [storeNonce, setStoreNonce] = useState(0)
   const [viaJS, setViaJS] = useState(false)
   const [acceptBadCerts, setAcceptBadCerts] = useState(false)
   const [viewReady, setViewReady] = useState(false)
@@ -125,9 +126,8 @@ export default function ThisDeviceSpikeScreen({ onBack }: { onBack: () => void }
       events,
       entryMark: () => native.proxyEntryCount(),
       entriesSince: (mark) => native.proxyEntries(mark),
-      loadUrl: async (url) => {
-        await webRef.current?.loadUrl(url)
-      },
+      loadUrl: async (url) => (await webRef.current?.loadUrl(url)) ?? -1,
+      freshStore: () => remountWith(() => setStoreNonce((value) => value + 1)),
       loadPage: async (name, query = '') => {
         const mark = events.length
         await webRef.current?.loadUrl(`http://localhost:${ports.localPort}/p/${name}${query}`)
@@ -287,12 +287,13 @@ export default function ThisDeviceSpikeScreen({ onBack }: { onBack: () => void }
       <View style={styles.webFrame}>
         {ports ? (
           <SpikeWebView
-            key={`${viewNonce}-${String(useProxy)}-${String(applyCredential)}-${String(blockWebRTC)}`}
+            key={`${viewNonce}-${String(useProxy)}-${String(applyCredential)}-${String(blockWebRTC)}-${String(storeNonce)}`}
             ref={webRef}
             style={styles.web}
             useProxy={useProxy}
             applyCredential={applyCredential}
             blockWebRTC={blockWebRTC}
+            storeNonce={storeNonce}
             acceptBadCerts={acceptBadCerts}
             onSpikeEvent={onSpikeEvent}
           />

@@ -1,6 +1,7 @@
 import {
   hostOf,
   loadAndWait,
+  type NavOutcome,
   proxySaw,
   verdict,
   waitPage,
@@ -58,7 +59,7 @@ const AUTH_HOSTS = [
   'https://www.wikipedia.org/'
 ]
 
-export const runAuth: SpikeTestDefinition['run'] = async (context) => {
+export const runAuthWarm: SpikeTestDefinition['run'] = async (context) => {
   const lines: string[] = []
   let good = 0
   let delegateChallenges = 0
@@ -84,7 +85,43 @@ export const runAuth: SpikeTestDefinition['run'] = async (context) => {
   }
   return verdict(
     good === AUTH_HOSTS.length,
-    `${good}/${AUTH_HOSTS.length} cold hosts loaded with an authorized CONNECT; 407s sent=${sent407}; proxy challenges answered at the delegate=${delegateChallenges}. ${lines.join(' | ')}`
+    `${good}/${AUTH_HOSTS.length} hosts loaded in ONE store/session (credential cached after the first 407, so this is warm) with an authorized CONNECT; 407s sent=${sent407}; proxy challenges answered at the delegate=${delegateChallenges}. ${lines.join(' | ')}`
+  )
+}
+
+export const runAuthCold: SpikeTestDefinition['run'] = async (context) => {
+  const lines: string[] = []
+  let good = 0
+  let delegateChallenges = 0
+  let sent407 = 0
+  for (const url of AUTH_HOSTS) {
+    // A new data store means a new network session: nothing cached from an earlier 407.
+    await context.freshStore()
+    await context.sleep(300)
+    const mark = context.entryMark()
+    const eventMark = context.events.length
+    const outcome = await loadAndWait(context, url)
+    await context.sleep(300)
+    const entries = context.entriesSince(mark)
+    const host = hostOf(url)
+    const authorized = proxySaw(entries, `${host}:443`)
+    const round407 = entries.filter((e) => e.kind === '407').length
+    const roundChallenges = context.events
+      .since(eventMark)
+      .filter((e) => e.kind === 'challenge' && e.isProxy === true).length
+    sent407 += round407
+    delegateChallenges += roundChallenges
+    const cold = round407 > 0 && roundChallenges > 0
+    lines.push(
+      `${host}: ${outcome.ok ? 'loaded' : outcome.detail}, 407s=${round407}, challenges=${roundChallenges}${authorized ? '' : ' (no authorized CONNECT)'}${cold ? '' : ' (NOT cold)'}`
+    )
+    if (outcome.ok && authorized && cold) {
+      good += 1
+    }
+  }
+  return verdict(
+    good === AUTH_HOSTS.length,
+    `${good}/${AUTH_HOSTS.length} cold rounds (fresh store each) loaded with a 407 sent, a delegate challenge answered and an authorized CONNECT; total 407s=${sent407}; total challenges=${delegateChallenges}. ${lines.join(' | ')}`
   )
 }
 
@@ -150,11 +187,16 @@ export const runDownload: SpikeTestDefinition['run'] = async (context) => {
 }
 
 export const runServerTrust: SpikeTestDefinition['run'] = async (context) => {
-  context.setAcceptBadCerts(true)
-  await context.sleep(400)
-  const eventMark = context.events.length
-  const outcome = await loadAndWait(context, 'https://self-signed.badssl.com/')
-  context.setAcceptBadCerts(false)
+  let outcome: NavOutcome
+  let eventMark = 0
+  try {
+    context.setAcceptBadCerts(true)
+    await context.sleep(400)
+    eventMark = context.events.length
+    outcome = await loadAndWait(context, 'https://self-signed.badssl.com/')
+  } finally {
+    context.setAcceptBadCerts(false)
+  }
   const trust = context.events
     .since(eventMark)
     .filter((e) => e.kind === 'challenge' && String(e.method).includes('ServerTrust'))
