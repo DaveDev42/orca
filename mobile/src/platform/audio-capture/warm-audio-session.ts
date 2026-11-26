@@ -1,51 +1,50 @@
-// Keeps the phone's audio engine alive between dictations. Tearing it down after every dictation dropped a
-// Bluetooth car out of call mode (HFP) each time and renegotiated it on the next tap, which is the long first-use
-// delay in a car. The engine stays up with its input muted, and is released after a quiet minute, when the app
-// leaves the foreground, or on an explicit release.
+// Keeps the phone's audio engine alive for a short grace period after a dictation so back-to-back dictations do
+// not renegotiate Bluetooth call mode (HFP) in a car. Nothing here runs ahead of a dictation: focusing the composer
+// or raising the keyboard must never touch the audio session, because an active session pins the car in a phone
+// call and stops the music. After the grace period (or on blur/background) the engine and session are released,
+// which hands the audio focus back so other apps' music resumes.
 
-export const WARM_AUDIO_IDLE_MS = 60_000
+export const WARM_AUDIO_GRACE_MS = 8_000
 
 export type WarmAudioSessionDeps = {
   readonly initialize: () => Promise<boolean>
   readonly toggleRecording: (recording: boolean) => boolean
   readonly tearDown: () => void
-  // True only when microphone access was already granted; a prewarm must never raise the permission prompt.
-  readonly hasMicrophonePermission: () => Promise<boolean>
   // Calls the handler when the app stops being the foreground app; returns the unsubscribe.
   readonly onBackground: (handler: () => void) => () => void
   readonly setTimer: (run: () => void, ms: number) => unknown
   readonly clearTimer: (timer: unknown) => void
-  readonly idleMs?: number
+  readonly graceMs?: number
 }
 
 export type WarmAudioSession = {
   /** Brings the engine up (or reuses the warm one). False when the device refused. */
   readonly open: () => Promise<boolean>
   readonly begin: () => boolean
-  /** Mutes the microphone and keeps the engine warm until the idle window passes. */
+  /** Mutes the microphone and keeps the engine warm only for the grace period. */
   readonly end: () => void
-  /** Warms the engine ahead of a tap when permission is already granted; true when it is warm. */
-  readonly prewarm: () => Promise<boolean>
+  /** Releases the engine now, unless a dictation is recording (its end starts the grace period). */
+  readonly releaseIfIdle: () => void
   /** Releases the engine now. */
   readonly release: () => void
 }
 
 export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSession {
-  const idleMs = deps.idleMs ?? WARM_AUDIO_IDLE_MS
-  let idleTimer: unknown = null
+  const graceMs = deps.graceMs ?? WARM_AUDIO_GRACE_MS
+  let graceTimer: unknown = null
   let recording = false
   let warm = false
   let stopWatchingBackground: (() => void) | null = null
 
-  function cancelIdle(): void {
-    if (idleTimer !== null) {
-      deps.clearTimer(idleTimer)
-      idleTimer = null
+  function cancelGrace(): void {
+    if (graceTimer !== null) {
+      deps.clearTimer(graceTimer)
+      graceTimer = null
     }
   }
 
   function release(): void {
-    cancelIdle()
+    cancelGrace()
     stopWatchingBackground?.()
     stopWatchingBackground = null
     recording = false
@@ -61,13 +60,13 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
     }
   }
 
-  function scheduleIdleRelease(): void {
-    cancelIdle()
-    idleTimer = deps.setTimer(release, idleMs)
+  function scheduleGraceRelease(): void {
+    cancelGrace()
+    graceTimer = deps.setTimer(release, graceMs)
   }
 
   async function ensureWarm(): Promise<boolean> {
-    cancelIdle()
+    cancelGrace()
     if (!(await deps.initialize())) {
       return false
     }
@@ -84,7 +83,7 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
   return {
     open: ensureWarm,
     begin: () => {
-      cancelIdle()
+      cancelGrace()
       recording = deps.toggleRecording(true)
       return recording
     },
@@ -98,20 +97,12 @@ export function createWarmAudioSession(deps: WarmAudioSessionDeps): WarmAudioSes
       } catch (error) {
         console.error('Failed to mute the microphone', error)
       }
-      scheduleIdleRelease()
+      scheduleGraceRelease()
     },
-    prewarm: async () => {
-      if (recording) {
-        return true
+    releaseIfIdle: () => {
+      if (!recording) {
+        release()
       }
-      if (!(await deps.hasMicrophonePermission())) {
-        return false
-      }
-      const opened = await ensureWarm()
-      if (opened && !recording) {
-        scheduleIdleRelease()
-      }
-      return opened
     },
     release
   }

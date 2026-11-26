@@ -9,7 +9,7 @@ import type { DictationCapture } from './dictation-capture-contract'
 const screen = nativeMicrophoneScreenLock
 
 // Never throw: unmount calls this bare and `end` must not reject, so wake-tag release and desktop cancel still run.
-// The engine is muted and kept warm rather than torn down; it releases itself after a quiet minute or in the background.
+// The engine is muted and kept warm rather than torn down; it is released after the grace period, on blur, or in the background.
 function releaseMicrophone(): void {
   screen.release()
   nativeWarmAudioSession.end()
@@ -29,8 +29,8 @@ const nativeDictationCapture: DictationCapture = {
     return { ok: true }
   },
   begin: () => nativeWarmAudioSession.begin(),
-  prewarm: () => nativeWarmAudioSession.prewarm(),
-  // Native events already delivered the tail. Mute and stay warm; other apps' audio resumes when the idle release runs.
+  releaseIfIdle: () => nativeWarmAudioSession.releaseIfIdle(),
+  // Native events already delivered the tail. Mute and stay warm only for the grace period; other apps' audio resumes when the release runs.
   end: async () => releaseMicrophone(),
   release: releaseMicrophone,
   onChunk: (handler) =>

@@ -269,9 +269,12 @@ class AudioEngine {
     func tearDown() {
         guard !isTornDown else { return }
         isTornDown = true
-        // Stop I/O first; deactivating a session with running I/O returns a busy error.
+        // Stop I/O first; deactivating a session with running I/O returns a busy error. Drop the input tap and give
+        // the session back right away (notifyOthersOnDeactivation): a lingering session keeps a Bluetooth car in
+        // call mode and other apps' music stays stopped.
         avAudioEngine.stop()
-        stopRecording(lingerSession: true)
+        avAudioEngine.inputNode.removeTap(onBus: 0)
+        stopRecording()
     }
 
     private func checkEngineIsRunning() {
