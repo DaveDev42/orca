@@ -46,7 +46,7 @@ final class SpikeProxy {
 
   /// Idempotent. Called off the main queue (it waits for the listener to be ready).
   func start() throws -> UInt16 {
-    if let listener, listener.state == .ready, port != 0 { return port }
+    if let listener, case .ready = listener.state, port != 0 { return port }
     let (newListener, newPort) = try SpikeLoopbackListener.start(
       queue: queue, label: "proxy"
     ) { [weak self] connection in

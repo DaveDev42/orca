@@ -16,7 +16,7 @@ final class SpikeLocalServer {
   private let chunk = Data((0..<65536).map { UInt8(truncatingIfNeeded: $0 &* 31 &+ 7) })
 
   func start() throws -> UInt16 {
-    if let listener, listener.state == .ready, port != 0 { return port }
+    if let listener, case .ready = listener.state, port != 0 { return port }
     let (newListener, newPort) = try SpikeLoopbackListener.start(queue: queue, label: "local") { [weak self] connection in
       self?.accept(connection)
     }
