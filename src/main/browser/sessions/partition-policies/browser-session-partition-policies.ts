@@ -8,6 +8,7 @@ import {
 } from '../proxy/browser-session-proxy'
 import { installBrowserSessionUserAgentPolicy } from '../../identity/requests/browser-session-ua'
 import { getBrowserProcessUserAgentIdentity } from '../../identity/browser-process-user-agent'
+import { browserEnvironmentIdentityForSession } from '../../environment-policy/browser-environment-identity'
 import { clearBrowserWebAuthnAccessHandlers } from '../../webauthn/browser-webauthn-access'
 import {
   handleWillDownload,
@@ -41,7 +42,11 @@ export function retireBrowserSessionUserAgentPolicy(sess: Session): void {
 }
 
 function configureBrowserSessionUserAgentPolicy(sess: Session, installExceptions: boolean): void {
-  sess.setUserAgent(getBrowserProcessUserAgentIdentity().userAgent)
+  // A route partition with a pinned environment identity keeps it across policy reinstalls.
+  sess.setUserAgent(
+    browserEnvironmentIdentityForSession(sess)?.userAgent ??
+      getBrowserProcessUserAgentIdentity().userAgent
+  )
   if (!installExceptions) {
     retireBrowserSessionUserAgentPolicy(sess)
     return

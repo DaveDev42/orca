@@ -19,11 +19,19 @@ import type {
 import { BrowserManagerVisibility } from '../browser-manager-visibility'
 import { setBrowserGuestPageUserAgentDemand } from '../../../identity/requests/browser-session-ua-demand'
 import { teamsRequestUserAgent } from '../../../identity/browser-site-user-agent'
+import {
+  environmentTabIdentity,
+  environmentUserAgentOverride
+} from '../../../environment-policy/browser-environment-identity'
 
 export abstract class BrowserManagerNavigation extends BrowserManagerVisibility {
   resolveBrowserGuestRequestUserAgent(
     request: Parameters<BrowserSessionRequestUserAgentResolver>[0]
   ): BrowserTabIdentity {
+    const pinned = environmentTabIdentity(request.session, request.url)
+    if (pinned) {
+      return pinned
+    }
     const processIdentity = getBrowserProcessUserAgentIdentity()
     const pendingNavigation =
       request.webContentsId === undefined
@@ -78,7 +86,9 @@ export abstract class BrowserManagerNavigation extends BrowserManagerVisibility 
     this.noteUserAgentDemand(guest, url, identity)
     // Mobile identity needs CDP metadata that setUserAgent cannot supply.
     const webContentsUserAgent =
-      identity.kind === 'site' ? identity.userAgent : getBrowserProcessUserAgentIdentity().userAgent
+      identity.kind === 'site' || identity.kind === 'environment'
+        ? identity.userAgent
+        : getBrowserProcessUserAgentIdentity().userAgent
     let presentedByWebContents = guest.getUserAgent()
     if (!sameDocument && presentedByWebContents !== webContentsUserAgent) {
       guest.setUserAgent(webContentsUserAgent)
@@ -153,11 +163,14 @@ export abstract class BrowserManagerNavigation extends BrowserManagerVisibility 
   }
 
   private resolveGuestTabIdentity(guest: Electron.WebContents, url: string): BrowserTabIdentity {
-    return resolveBrowserTabIdentity({
-      url,
-      mobile: this.hasMobileViewportApplied(guest.id),
-      processIdentity: getBrowserProcessUserAgentIdentity()
-    })
+    return (
+      environmentTabIdentity(guest.session, url) ??
+      resolveBrowserTabIdentity({
+        url,
+        mobile: this.hasMobileViewportApplied(guest.id),
+        processIdentity: getBrowserProcessUserAgentIdentity()
+      })
+    )
   }
 
   // Clear redundant overrides to preserve client hints; UA-only CDP overrides suppress them.
@@ -176,6 +189,9 @@ export abstract class BrowserManagerNavigation extends BrowserManagerVisibility 
     identity: BrowserTabIdentity,
     presentedByWebContents: string
   ): CdpUserAgentOverride | null {
+    if (identity.kind === 'environment') {
+      return environmentUserAgentOverride(identity)
+    }
     const override: CdpUserAgentOverride =
       identity.kind === 'mobile'
         ? { userAgent: identity.userAgent, userAgentMetadata: identity.userAgentMetadata }

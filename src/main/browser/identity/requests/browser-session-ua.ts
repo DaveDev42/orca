@@ -14,6 +14,7 @@ import {
   stripClientHints,
   applyUserAgentMetadataHeaders
 } from './browser-user-agent-request-headers'
+import { environmentTabIdentity } from '../../environment-policy/browser-environment-identity'
 import {
   googleAuthUserAgent,
   shouldUseGoogleAuthIdentity,
@@ -35,6 +36,8 @@ export type BrowserSessionRequestUserAgentResolver = (args: {
 export function browserSessionHeaderListenerIgnoresDemand(sess: Session): boolean {
   return (
     getBrowserProcessUserAgentIdentity().mode === 'clean' ||
+    // An environment's pinned identity rewrites every request of its partition, whatever the page.
+    environmentTabIdentity(sess, '') !== undefined ||
     (sess.extensions?.getAllExtensions().length ?? 0) > 0
   )
 }
@@ -48,6 +51,17 @@ export function installBrowserSessionUserAgentPolicy(
   const applyUserAgentPolicy = (details: Electron.OnBeforeSendHeadersListenerDetails): void => {
     const headers = details.requestHeaders
     const requestUserAgent = currentUserAgent(headers)
+    const pinned = environmentTabIdentity(sess, details.url)
+    if (pinned) {
+      // The pin outranks the Google sign-in and per-site rules: they would show the viewer's platform.
+      setUserAgentHeader(headers, pinned.userAgent)
+      applyUserAgentMetadataHeaders(headers, pinned.userAgentMetadata)
+      const pinnedOutgoing = currentUserAgent(headers)
+      if (pinnedOutgoing) {
+        setUserAgentHeader(headers, teamsRequestUserAgent(details.url, pinnedOutgoing))
+      }
+      return
+    }
     let effectiveUserAgent: string | undefined
     try {
       effectiveUserAgent = details.webContents?.getUserAgent()

@@ -92,6 +92,11 @@ export function clearBrowserGuestUserAgentDemand(guestId: number): void {
   write(guestId, null)
 }
 
+/** A session-level rule (an environment's pinned identity) changed what the header policy needs. */
+export function notifyBrowserSessionUserAgentPolicyChanged(session: Session): void {
+  notify(session)
+}
+
 export function hasBrowserSessionUserAgentDemand(session: Session): boolean {
   return demandingGuestsBySession.has(session)
 }
