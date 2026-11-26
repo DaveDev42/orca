@@ -41,6 +41,13 @@ export const PAIRED_DESKTOP_METHODS = [
   'ui.get',
   'ui.recordFeatureInteraction',
   'ui.set',
+  // A phone hosting pages for the runtime it is connected to; the lease and tunnel are never relayed to a server.
+  // Each handler also needs the host's browserMobileClientHostingAllowed, a non-delegated pairing and the capability.
+  'browser.clientHost.attach',
+  'browser.clientHost.commandResult',
+  'browser.clientHost.commandResultChunk',
+  'browser.clientHost.pageMetadata',
+  'network.browserTunnel',
   // The desktop's accounts pane and project pickers target its active runtime, not a workspace's host.
   'accounts.consumeCodexResetCredit',
   'accounts.list',

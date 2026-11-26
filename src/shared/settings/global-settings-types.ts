@@ -268,6 +268,11 @@ export type GlobalSettings = GlobalSettingsBase & {
   floatingTerminalEnabled: boolean
   /** Main-side new-page kill switch for paired Electron client-hosted browser placement. */
   browserClientHostedRemoteEnabled?: boolean
+  /** Host-owned gate for a paired phone rendering browser pages on its own device through this
+   *  runtime (browser.clientHost.attach and network.browserTunnel). Absent or false refuses it and
+   *  stops advertising the capability; fleets pin false where traffic must leave from this host's
+   *  network only as pixels. No client settings RPC writes it. */
+  browserMobileClientHostingAllowed?: boolean
   /** Main-side kill switch for Orca's copy of agy. Off, it runs no chat and isn't updated: chats
    *  run the user's own agy or, where there is none, refuse as agy not found. Absent means on. */
   antigravityManagedAgyEnabled?: boolean

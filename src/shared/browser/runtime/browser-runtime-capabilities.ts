@@ -24,6 +24,9 @@ export const BROWSER_CLIENT_FILE_CHANNEL_RUNTIME_CAPABILITY =
 // Older hosts' browser.tabSetProfile can't switch a client-hosted page, so desktops hide its Profile submenu without this.
 export const BROWSER_CLIENT_PROFILE_SWITCH_RUNTIME_CAPABILITY =
   'browser.clientHost.profileSwitch.v1' as const
+// Host-conditional (browserMobileClientHostingAllowed, so getStatus adds it): a paired phone may host pages and open
+// network.browserTunnel here. A phone declares it too (runtime.clientCapabilities.update) to say it can host.
+export const BROWSER_MOBILE_CLIENT_HOST_RUNTIME_CAPABILITY = 'browser.clientHost.mobile.v1' as const
 export const BROWSER_NETWORK_TUNNEL_RUNTIME_CAPABILITY = 'network.browserTunnel.v1' as const
 export const BROWSER_NETWORK_EXECUTION_HOSTS_RUNTIME_CAPABILITY =
   'network.browserTunnel.executionHosts.v1' as const

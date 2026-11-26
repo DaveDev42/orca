@@ -11,6 +11,7 @@ import {
   BROWSER_STOP_HARD_RELOAD_RUNTIME_CAPABILITY,
   BROWSER_MOBILE_STOP_RUNTIME_CAPABILITY,
   BROWSER_CLIENT_HOST_RUNTIME_CAPABILITY,
+  BROWSER_MOBILE_CLIENT_HOST_RUNTIME_CAPABILITY,
   BROWSER_GRAB_RUNTIME_CAPABILITY,
   BROWSER_DROP_FILES_RUNTIME_CAPABILITY,
   BROWSER_HEADLESS_RUNTIME_CAPABILITY,
@@ -139,6 +140,13 @@ export abstract class OrcaRuntimeWithGetStatus extends RuntimeWorkspaceChangeEve
         BROWSER_DROP_FILES_RUNTIME_CAPABILITY,
         BROWSER_PAGE_PROMPTS_RUNTIME_CAPABILITY
       )
+    }
+    // A phone may host pages here only when the host owner allows it; hosts that cannot take client pages never do.
+    if (
+      canHostClientPages &&
+      this.store?.getSettings?.().browserMobileClientHostingAllowed === true
+    ) {
+      capabilities.push(BROWSER_MOBILE_CLIENT_HOST_RUNTIME_CAPABILITY)
     }
     // Only an offscreen page swap keeps its viewers' streams; a window's webview remount does not yet.
     if (hasOffscreen) {

@@ -1,3 +1,4 @@
+import { requireBrowserClientHostCaller } from './browser-client-host-caller'
 import { requireCommandResultIdentity } from './browser-client-host-command-result-identity'
 import { BROWSER_PAGE_INITIALIZATION_ACTION_METHODS } from './browser-page-initialization-action'
 import '../../../../../shared/remote-runtime/protocol/protocol-version'
@@ -33,12 +34,10 @@ export const BROWSER_CLIENT_HOST_METHODS = [
     name: 'browser.clientHost.attach',
     permission: 'workspace',
     params: BrowserClientHostAttachParams,
-    handler: async (
-      params,
-      { runtime, connectionId, pairedDeviceId, clientKind, clientCapabilities, signal },
-      emit
-    ) => {
-      if (clientKind !== 'runtime' || !connectionId || !pairedDeviceId) {
+    handler: async (params, context, emit) => {
+      const { runtime, connectionId, pairedDeviceId, clientCapabilities, signal } = context
+      requireBrowserClientHostCaller(context)
+      if (!connectionId || !pairedDeviceId) {
         throw new Error('authenticated_browser_client_host_required')
       }
       if (!clientCapabilities?.includes(BROWSER_CLIENT_HOST_RUNTIME_CAPABILITY)) {
@@ -235,11 +234,10 @@ export const BROWSER_CLIENT_HOST_METHODS = [
     name: 'browser.clientHost.pageMetadata',
     permission: 'workspace',
     params: BrowserClientPageMetadataParams,
-    handler: (
-      params,
-      { runtime, pairedDeviceId, connectionId, clientKind, clientCapabilities }
-    ) => {
-      if (clientKind !== 'runtime' || !pairedDeviceId || !connectionId) {
+    handler: (params, context) => {
+      const { runtime, pairedDeviceId, connectionId, clientCapabilities } = context
+      requireBrowserClientHostCaller(context)
+      if (!pairedDeviceId || !connectionId) {
         throw new Error('authenticated_browser_client_host_required')
       }
       if (

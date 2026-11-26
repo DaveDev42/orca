@@ -18,6 +18,7 @@ import {
 } from '../../../../../shared/browser/runtime/browser-runtime-capabilities'
 import { getBrowserHostLeaseRegistry } from '../../../browser-host/leases/browser-host-lease-registry-instance'
 import { defineStreamingMethod } from '../../core'
+import { requireBrowserClientHostCaller } from './browser-client-host-caller'
 
 const outboundMemoryBudgets = new BrowserNetworkTunnelOutboundMemoryBudgetRegistry()
 
@@ -30,27 +31,18 @@ export function createBrowserNetworkTunnelMethods(
       name: 'network.browserTunnel',
       permission: 'host-admin',
       params: BrowserNetworkTunnelAttachParams,
-      handler: async (
-        params,
-        {
+      handler: async (params, context, emit) => {
+        const {
           runtime,
           connectionId,
           pairedDeviceId,
-          clientKind,
           clientCapabilities,
           sendBinary,
           registerBinaryMessageHandler,
           signal
-        },
-        emit
-      ) => {
-        if (
-          clientKind !== 'runtime' ||
-          !connectionId ||
-          !pairedDeviceId ||
-          !sendBinary ||
-          !registerBinaryMessageHandler
-        ) {
+        } = context
+        requireBrowserClientHostCaller(context)
+        if (!connectionId || !pairedDeviceId || !sendBinary || !registerBinaryMessageHandler) {
           throw new Error('authenticated_binary_browser_tunnel_required')
         }
         if (!clientCapabilities?.includes(BROWSER_NETWORK_TUNNEL_RUNTIME_CAPABILITY)) {

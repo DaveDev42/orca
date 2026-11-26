@@ -2,6 +2,7 @@ import { BROWSER_CLIENT_HOST_RUNTIME_CAPABILITY } from '../../../../../shared/br
 import { BROWSER_CLIENT_HOST_AUTHORITY_MISMATCH_CODE } from '../../../../../shared/browser/client-hosting/browser-client-host-protocol'
 import { BrowserError } from '../../../../browser/browser-error'
 import type { RpcContext } from '../../core'
+import { requireBrowserClientHostCaller } from './browser-client-host-caller'
 
 export function requireCommandResultIdentity(
   params: {
@@ -12,11 +13,18 @@ export function requireCommandResultIdentity(
   },
   context: Pick<
     RpcContext,
-    'runtime' | 'pairedDeviceId' | 'connectionId' | 'clientKind' | 'clientCapabilities'
+    | 'runtime'
+    | 'pairedDeviceId'
+    | 'pairedDeviceParentId'
+    | 'connectionId'
+    | 'clientKind'
+    | 'callerScope'
+    | 'clientCapabilities'
   >
 ) {
-  const { runtime, pairedDeviceId, connectionId, clientKind, clientCapabilities } = context
-  if (clientKind !== 'runtime' || !pairedDeviceId || !connectionId) {
+  const { runtime, pairedDeviceId, connectionId, clientCapabilities } = context
+  requireBrowserClientHostCaller(context)
+  if (!pairedDeviceId || !connectionId) {
     throw new Error('authenticated_browser_client_host_required')
   }
   if (!clientCapabilities?.includes(BROWSER_CLIENT_HOST_RUNTIME_CAPABILITY)) {
