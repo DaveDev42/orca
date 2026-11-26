@@ -1,5 +1,6 @@
 // One wake socket: it only says "poll now". Keepalives go out every interval; the cloud answers them.
 import WebSocket, { type RawData } from 'ws'
+import { envProxyWsOptions } from '../network/env-proxy-transport'
 import {
   CONNECTOR_WAKE_CLOSE_CODE,
   CONNECTOR_WAKE_FRAME,
@@ -48,6 +49,7 @@ export type ConnectorWakeSocketFactory = (
 
 export const createConnectorWakeSocket: ConnectorWakeSocketFactory = (url, headers) =>
   new WebSocket(url, {
+    ...envProxyWsOptions(url),
     headers,
     perMessageDeflate: false,
     handshakeTimeout: HANDSHAKE_TIMEOUT_MS,

@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import { accountRelayFetch } from '../network/env-proxy-transport'
 import {
   requestConnector,
   type ConnectorRequest,
@@ -47,7 +48,7 @@ export class ConnectorAccountTransport {
   constructor(
     private readonly origin: string,
     private readonly mint: ConnectorTokenMint,
-    private readonly fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+    private readonly fetchImpl: typeof globalThis.fetch = accountRelayFetch(),
     private readonly now: () => number = Date.now
   ) {}
 

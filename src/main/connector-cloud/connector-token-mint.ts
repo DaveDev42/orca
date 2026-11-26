@@ -22,6 +22,7 @@ import {
   type ConnectorHostKey
 } from './connector-host-key'
 import type { ConnectorToken, ConnectorTokenMint } from './connector-transport'
+import { accountRelayFetch } from '../network/env-proxy-transport'
 
 // The auth service's flag for accepting a host-key proof; servers without it refuse the field.
 export const CONNECTOR_HOST_KEY_CAPABILITY = 'connector.hostKey'
@@ -119,7 +120,7 @@ export function desktopConnectorTokenMint(
   authConfig: OrcaCloudAuthConfig,
   userDataPath: string,
   account: string,
-  fetchImpl: typeof globalThis.fetch = globalThis.fetch
+  fetchImpl: typeof globalThis.fetch = accountRelayFetch()
 ): ConnectorTokenMint {
   return async () => {
     if (connectorAccount(userDataPath) !== account) {

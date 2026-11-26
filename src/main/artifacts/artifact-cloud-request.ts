@@ -4,6 +4,7 @@ import {
   type ArtifactWriteRequest
 } from '../../shared/artifacts/artifacts'
 import { OrcaCloudRequestError } from '../orca-profiles/cloud-auth/profile-cloud-client'
+import { accountRelayFetch } from '../network/env-proxy-transport'
 import { readArtifactRateLimitResponse } from './artifact-cloud-rate-limit'
 import type { ArtifactRateLimitReplay } from './artifact-cloud-auth-context'
 
@@ -38,7 +39,7 @@ function sendArtifactRequest(
   path: string,
   options: ArtifactRequestOptions
 ): Promise<Response> {
-  return fetch(`${apiUrl}/v1/artifacts${path}`, {
+  return accountRelayFetch()(`${apiUrl}/v1/artifacts${path}`, {
     method: options.method ?? 'GET',
     headers: {
       authorization: `Bearer ${token}`,
