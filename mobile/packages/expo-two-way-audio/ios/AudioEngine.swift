@@ -19,6 +19,15 @@ class AudioEngine {
     public var onInputVolumeCallback: ((Float) -> Void)?
     public var onAudioInterruptionCallback: ((String) -> Void)?
 
+    // Start/stop cues: played through the engine's own output (the active route, so over a car's HFP link too) once the
+    // session is active and the engine runs, on every start, warm or cold. The mic tap drops buffers until the cue has
+    // finished so the tone never reaches the recognizer.
+    private let cuePlayer = AVAudioPlayerNode()
+    private lazy var startCueBuffer = AudioEngine.makeCueBuffer(format: voiceIOFormat, frequency: 880, seconds: 0.15, gain: 0.5)
+    private lazy var stopCueBuffer = AudioEngine.makeCueBuffer(format: voiceIOFormat, frequency: 660, seconds: 0.08, gain: 0.25)
+    private var micMutedUntil: TimeInterval = 0
+    private static let cueTailSeconds: TimeInterval = 0.08
+
     private var inputBuffer = [Float](repeating: 0, count: 2048)
     private var inputBufferIndex = 0
 
@@ -145,15 +154,41 @@ class AudioEngine {
 
         // Voice processing runs input and output as one unit, so keep the output side wired even though nothing plays.
         avAudioEngine.connect(avAudioEngine.mainMixerNode, to: avAudioEngine.outputNode, format: voiceIOFormat)
+        avAudioEngine.attach(cuePlayer)
+        avAudioEngine.connect(cuePlayer, to: avAudioEngine.mainMixerNode, format: voiceIOFormat)
 
         input.installTap(onBus: 0, bufferSize: 2048, format: voiceIOFormat) { [weak self] buffer, when in
-            if self?.isRecording == true {
+            if self?.isRecording == true, ProcessInfo.processInfo.systemUptime >= (self?.micMutedUntil ?? 0) {
                 self?.processMicrophoneBuffer(buffer)
                 self?.updateInputVolume()
             }
         }
 
         avAudioEngine.prepare()
+    }
+
+    private static func makeCueBuffer(format: AVAudioFormat, frequency: Double, seconds: Double, gain: Float) -> AVAudioPCMBuffer? {
+        let frames = AVAudioFrameCount(format.sampleRate * seconds)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames),
+              let samples = buffer.floatChannelData?[0] else { return nil }
+        buffer.frameLength = frames
+        let fade = Double(frames) * 0.2
+        for i in 0..<Int(frames) {
+            let t = Double(i) / format.sampleRate
+            // Short linear fade in/out so the tone does not click.
+            let envelope = min(1.0, Double(i) / fade, Double(Int(frames) - i) / fade)
+            samples[i] = gain * Float(envelope * sin(2.0 * Double.pi * frequency * t))
+        }
+        return buffer
+    }
+
+    // Only with a running engine (session active, route up). Never throws; a missed cue must not fail the dictation.
+    private func playCue(_ buffer: AVAudioPCMBuffer?, seconds: TimeInterval) {
+        guard let buffer = buffer, avAudioEngine.isRunning else { return }
+        micMutedUntil = ProcessInfo.processInfo.systemUptime + seconds + AudioEngine.cueTailSeconds
+        cuePlayer.stop()
+        cuePlayer.scheduleBuffer(buffer, completionHandler: nil)
+        cuePlayer.play()
     }
 
     func processMicrophoneBuffer(_ buffer: AVAudioPCMBuffer) {
@@ -217,7 +252,14 @@ class AudioEngine {
                 return false
             }
         }
+        let wasRecording = isRecording
         isRecording = val
+        if val {
+            // Every start, warm or cold: the engine is running here, so the route is as ready as it will get.
+            playCue(startCueBuffer, seconds: 0.15)
+        } else if wasRecording {
+            playCue(stopCueBuffer, seconds: 0.08)
+        }
         if !isRecording {
             avAudioEngine.inputNode.isVoiceProcessingInputMuted = true
             inputBuffer = [Float](repeating: 0, count: 2048)

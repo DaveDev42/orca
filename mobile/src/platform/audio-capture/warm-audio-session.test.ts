@@ -128,4 +128,14 @@ describe('createWarmAudioSession', () => {
     expect(deps.tearDown).toHaveBeenCalledTimes(1)
     expect(deps.onBackground).toHaveBeenCalledTimes(1)
   })
+
+  it('toggles recording on for every start, warm or cold, so the native start cue plays each time', async () => {
+    const { session, deps } = setup()
+    await session.open()
+    session.begin()
+    session.end()
+    await session.open()
+    session.begin()
+    expect(deps.toggleRecording.mock.calls.filter(([on]) => on === true)).toHaveLength(2)
+  })
 })
