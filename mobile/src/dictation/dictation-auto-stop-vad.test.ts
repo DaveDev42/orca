@@ -136,7 +136,10 @@ describe('createAutoStopVad', () => {
 
   it('still ends a link that never leaves digital zero, at the total cap', () => {
     const feeder = new Feeder()
-    feeder.noise(0, AUTO_STOP_NO_SPEECH_MAX_TOTAL_MS + AUTO_STOP_SETTLE_MS + AUTO_STOP_CALIBRATION_MS)
+    feeder.noise(
+      0,
+      AUTO_STOP_NO_SPEECH_MAX_TOTAL_MS + AUTO_STOP_SETTLE_MS + AUTO_STOP_CALIBRATION_MS
+    )
     expect(feeder.ended).toBe(true)
   })
 
