@@ -88,6 +88,8 @@ describe('createWarmAudioSession', () => {
   it('releaseIfIdle hands the session back at once unless recording', async () => {
     const idle = setup()
     await idle.session.open()
+    idle.session.begin()
+    idle.session.end()
     idle.session.releaseIfIdle()
     expect(idle.deps.tearDown).toHaveBeenCalledTimes(1)
 
@@ -137,5 +139,23 @@ describe('createWarmAudioSession', () => {
     await session.open()
     session.begin()
     expect(deps.toggleRecording.mock.calls.filter(([on]) => on === true)).toHaveLength(2)
+  })
+
+  it('keeps the session when the keyboard hides while a dictation is opening or about to begin', async () => {
+    const { session, deps } = setup()
+    const opening = session.open()
+    session.releaseIfIdle()
+    await opening
+    session.releaseIfIdle()
+    expect(deps.tearDown).not.toHaveBeenCalled()
+    expect(session.begin()).toBe(true)
+    expect(deps.initialize).toHaveBeenCalledTimes(1)
+  })
+
+  it('has nothing to release after a refused open', async () => {
+    const { session, deps } = setup({ initialize: false })
+    await session.open()
+    session.releaseIfIdle()
+    expect(deps.tearDown).not.toHaveBeenCalled()
   })
 })
