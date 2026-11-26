@@ -1,5 +1,6 @@
 import {
   addExpoTwoWayAudioEventListener,
+  audioLog,
   requestMicrophonePermissionsAsync
 } from '@orca/expo-two-way-audio'
 import { bridgeAudioInterruptionEndsCapture } from '../../mobile-web-shell/bridge/native-capabilities/bridge-audio-verbs'
@@ -12,7 +13,7 @@ const screen = nativeMicrophoneScreenLock
 // The engine is muted and kept warm rather than torn down; it is released after the grace period, on blur, or in the background.
 function releaseMicrophone(): void {
   screen.release()
-  nativeWarmAudioSession.end()
+  nativeWarmAudioSession.end('native-dictation')
 }
 
 const nativeDictationCapture: DictationCapture = {
@@ -21,15 +22,16 @@ const nativeDictationCapture: DictationCapture = {
     if (!permission.granted) {
       return { ok: false, reason: 'permission-denied' }
     }
-    if (!(await nativeWarmAudioSession.open())) {
+    if (!(await nativeWarmAudioSession.open('native-dictation'))) {
       return { ok: false, reason: 'unavailable' }
     }
     // Hold the screen from successful open; end/release free it, and failed opens acquire nothing.
     screen.hold()
     return { ok: true }
   },
-  begin: () => nativeWarmAudioSession.begin(),
-  releaseIfIdle: () => nativeWarmAudioSession.releaseIfIdle(),
+  begin: () => nativeWarmAudioSession.begin('native-dictation'),
+  releaseIfIdle: () => nativeWarmAudioSession.releaseIfIdle('composer-blur'),
+  log: audioLog,
   // Native events already delivered the tail. Mute and stay warm only for the grace period; other apps' audio resumes when the release runs.
   end: async () => releaseMicrophone(),
   release: releaseMicrophone,

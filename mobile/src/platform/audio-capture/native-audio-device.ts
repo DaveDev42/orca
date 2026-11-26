@@ -1,5 +1,6 @@
 import {
   addExpoTwoWayAudioEventListener,
+  audioLog,
   initialize,
   requestMicrophonePermissionsAsync,
   speechFeed,
@@ -31,6 +32,7 @@ export const nativeWarmAudioSession = createWarmAudioSession({
   initialize,
   toggleRecording,
   tearDown,
+  log: audioLog,
   onBackground: (handler) => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') {
@@ -55,12 +57,15 @@ export const nativeAudioDeviceEngine: NativeAudioEngine = {
     return permission.granted ? 'granted' : permission.canAskAgain ? 'undetermined' : 'denied'
   },
   open: async (sampleRate) => ({
-    opened: sampleRate === NATIVE_AUDIO_DEVICE_SAMPLE_RATE && (await nativeWarmAudioSession.open()),
+    opened:
+      sampleRate === NATIVE_AUDIO_DEVICE_SAMPLE_RATE &&
+      (await nativeWarmAudioSession.open('page-start')),
     sampleRate: NATIVE_AUDIO_DEVICE_SAMPLE_RATE
   }),
-  begin: () => nativeWarmAudioSession.begin(),
+  begin: () => nativeWarmAudioSession.begin('page-start'),
   // Mute and keep the engine warm: dropping it dropped a Bluetooth car out of call mode on every dictation.
-  end: () => nativeWarmAudioSession.end(),
+  end: () => nativeWarmAudioSession.end('page-stop'),
+  log: audioLog,
   screenLock: nativeMicrophoneScreenLock,
   onMicrophoneData: (handler) =>
     addExpoTwoWayAudioEventListener('onMicrophoneData', (event) => {

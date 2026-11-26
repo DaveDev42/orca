@@ -12,6 +12,7 @@ function setup(options: { initialize?: boolean } = {}) {
     initialize: vi.fn(async () => options.initialize ?? true),
     toggleRecording: vi.fn((recording: boolean) => recording),
     tearDown: vi.fn(),
+    log: vi.fn(),
     onBackground: vi.fn((handler: () => void) => {
       backgroundHandler = handler
       return unsubscribe
@@ -158,4 +159,136 @@ describe('createWarmAudioSession', () => {
     session.releaseIfIdle()
     expect(deps.tearDown).not.toHaveBeenCalled()
   })
+
+  it('releases an opened session that no begin follows once the grace period passes', async () => {
+    const { session, deps, timers, fireIdle } = setup()
+    await session.open('page-start')
+    expect([...timers.values()].map((timer) => timer.ms)).toEqual([WARM_AUDIO_GRACE_MS])
+    fireIdle()
+    expect(deps.toggleRecording).toHaveBeenLastCalledWith(false)
+    expect(deps.tearDown).toHaveBeenCalledTimes(1)
+    expect(deps.log).toHaveBeenCalledWith(
+      expect.stringContaining('warm.timer-fired reason=open-timeout')
+    )
+  })
+
+  it('does not release a begun dictation through the open watchdog', async () => {
+    const { session, deps, timers, fireIdle } = setup()
+    await session.open()
+    session.begin()
+    expect(timers.size).toBe(0)
+    fireIdle()
+    expect(deps.tearDown).not.toHaveBeenCalled()
+  })
+
+  it('arms the release when begin is refused, even if no end follows', async () => {
+    const { session, deps, timers, fireIdle } = setup()
+    await session.open()
+    deps.toggleRecording.mockReturnValueOnce(false)
+    expect(session.begin()).toBe(false)
+    expect(timers.size).toBe(1)
+    fireIdle()
+    expect(deps.tearDown).toHaveBeenCalledTimes(1)
+  })
+
+  it('arms the release when begin throws, and lets the error through', async () => {
+    const { session, deps, timers, fireIdle } = setup()
+    await session.open()
+    deps.toggleRecording.mockImplementationOnce(() => {
+      throw new Error('native failed')
+    })
+    expect(() => session.begin()).toThrow('native failed')
+    expect(timers.size).toBe(1)
+    fireIdle()
+    expect(deps.tearDown).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not extend the grace period when end is called again', async () => {
+    const { session, deps, timers } = setup()
+    await session.open()
+    session.begin()
+    session.end('native-dictation')
+    const [first] = [...timers.keys()]
+    session.end('native-dictation')
+    session.end('native-dictation')
+    expect([...timers.keys()]).toEqual([first])
+    expect(deps.setTimer).toHaveBeenCalledTimes(2)
+  })
+
+  it('starts the grace period when the dictation ended while the engine was coming up', async () => {
+    const { session, deps, timers, fireIdle } = setup()
+    const opening = session.open('native-dictation')
+    session.end('native-dictation')
+    expect(timers.size).toBe(0)
+    await opening
+    expect(timers.size).toBe(1)
+    fireIdle()
+    expect(deps.tearDown).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears the starting flag when initialize throws, so a later release works', async () => {
+    const { session, deps } = setup()
+    deps.initialize.mockRejectedValueOnce(new Error('boom'))
+    await expect(session.open()).rejects.toThrow('boom')
+    await session.open()
+    session.begin()
+    session.end()
+    session.releaseIfIdle('keyboard-hide')
+    expect(deps.tearDown).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes each call and the timer release to the device log with its reason', async () => {
+    const { session, deps, fireIdle } = setup()
+    await session.open('page-start')
+    session.begin('page-start')
+    session.end('page-stop')
+    session.releaseIfIdle('keyboard-hide')
+    const lines = deps.log.mock.calls.map(([line]) => line)
+    expect(lines).toEqual([
+      'warm.open reason=page-start warm=false starting=false recording=false',
+      'warm.opened reason=page-start warm=true starting=true recording=false',
+      'warm.begin reason=page-start warm=true starting=true recording=false',
+      'warm.end reason=page-stop warm=true starting=true recording=true',
+      'warm.release reason=keyboard-hide warm=true starting=false recording=false'
+    ])
+    fireIdle()
+  })
+
+  // The quiet auto-stop ends the dictation through the same capture end as a manual stop; auto-send only changes
+  // what the composer does with the words afterwards (it sends, and the keyboard may hide), never the audio.
+  describe.each([{ autoSend: true }, { autoSend: false }])(
+    'quiet auto-stop with auto-send $autoSend',
+    ({ autoSend }) => {
+      it('releases the session after the grace period', async () => {
+        const { session, deps, timers, fireIdle } = setup()
+        await session.open('native-dictation')
+        session.begin('native-dictation')
+        // Quiet stop: finish ends the capture, then cleanup and unmount end it again.
+        session.end('native-dictation')
+        session.end('native-dictation')
+        if (autoSend) {
+          session.releaseIfIdle('composer-blur')
+          expect(deps.tearDown).toHaveBeenCalledTimes(1)
+          return
+        }
+        expect(deps.tearDown).not.toHaveBeenCalled()
+        expect([...timers.values()].map((timer) => timer.ms)).toEqual([WARM_AUDIO_GRACE_MS])
+        fireIdle()
+        expect(deps.toggleRecording).toHaveBeenLastCalledWith(false)
+        expect(deps.tearDown).toHaveBeenCalledTimes(1)
+        expect(timers.size).toBe(0)
+      })
+
+      it(`still releases when the next open never gets its begin (auto-send ${autoSend})`, async () => {
+        const { session, deps, fireIdle } = setup()
+        await session.open('native-dictation')
+        session.begin('native-dictation')
+        session.end('native-dictation')
+        // The reconnect after a background opens the session again (page composer or native hold) and nothing begins.
+        await session.open('page-start')
+        fireIdle()
+        expect(deps.tearDown).toHaveBeenCalledTimes(1)
+      })
+    }
+  )
 })

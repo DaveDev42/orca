@@ -82,6 +82,7 @@ export function nativeMountingSubstitutes(): Map<string, unknown> {
         initialize: () => Promise.resolve(true),
         requestMicrophonePermissionsAsync: () => Promise.resolve({ granted: true }),
         tearDown: () => Promise.resolve(),
+        audioLog: () => {},
         toggleRecording: () => true
       })
     ],

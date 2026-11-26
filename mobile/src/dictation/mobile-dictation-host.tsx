@@ -12,6 +12,7 @@ import { requestMobileDictationAutoSend } from './mobile-dictation-auto-send'
 import { loadDictationAutoSend, loadDictationAutoStop } from '../storage/preferences'
 import { DEFAULT_STOP_AFTER_SILENCE_SECONDS } from '../../../src/shared/speech/dictation/dictation-silence-stop'
 import { insertMobileDictationAway } from './mobile-dictation-away-insert'
+import { useDictationCapture } from '../platform/audio-capture/dictation-capture'
 import { nativeChatDictationCopy } from './mobile-session-native-chat-dictation-copy'
 import { forkDictationCopy } from '../fork-i18n/use-fork-translation'
 import { dictationAwayCopy } from './mobile-dictation-away-copy'
@@ -93,6 +94,7 @@ export function MobileDictationHostProvider({ children }: { children: ReactNode 
   const autoSendEnabledRef = useRef(false)
   // Set when the speaker's silence ended the dictation, so only that kind of stop sends the words.
   const endedByQuietRef = useRef(false)
+  const quietLog = useDictationCapture().log ?? (() => {})
 
   // Say it on the screen that shows the dictation, else in the host's toast (with Open for the dictation it is about).
   // A screen's toast is not read by VoiceOver on the page, so it is spoken too; the host's toast is spoken when it shows.
@@ -172,6 +174,7 @@ export function MobileDictationHostProvider({ children }: { children: ReactNode 
 
   useMobileDictationAutoStop(dictation, owner?.dictationMode, autoStopEnabled, () => {
     endedByQuietRef.current = true
+    quietLog('native-dictation quiet auto-stop')
     say(forkDictationCopy.stoppedAfterQuiet())
     stop()
   })

@@ -20,6 +20,8 @@ export type DictationCapture = {
   readonly release: () => void
   // Hand the audio session back now when no dictation is recording (composer blur). Optional: the page seam has no verb for it.
   readonly releaseIfIdle?: () => void
+  // Best-effort device log line (native only), so the log names the dictation phase that touched the audio session.
+  readonly log?: (message: string) => void
   readonly onChunk: (
     handler: (chunk: DictationCaptureChunk) => void
   ) => DictationCaptureSubscription

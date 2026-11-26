@@ -103,6 +103,12 @@ public class ExpoTwoWayAudioModule: Module {
             }
         }
 
+        // JavaScript's side of the audio story (who opened, began, ended or released the session and why), so a
+        // stuck session in the device log names its caller. Best effort; carries no data beyond the message.
+        Function("audioLog") { (message: String) in
+            orcaAudioLogLine("js: \(message)")
+        }
+
         Function("tearDown") {
             self.audioEngine?.tearDown()
             self.audioEngine = nil
