@@ -34,11 +34,11 @@ export function useNativeDeviceVerbs(
   // A new session is a new document; close any mic its predecessor left open.
   const audio = useMemo(() => createNativeAudioCapture(nativeAudioDeviceEngine), [sessionId])
   useEffect(() => () => audio.dispose(), [audio])
-  // Raising the keyboard means a composer took focus: bring a Bluetooth car into call mode now, not on the mic tap.
-  // Only with permission already granted, and the warm engine lets itself go after a quiet minute.
+  // Focus and keyboard-show never touch the audio session (an active one pins a Bluetooth car in call mode and stops
+  // the music). The keyboard going away is the page composer's blur: hand the session back unless it is recording.
   useEffect(() => {
-    const subscription = Keyboard.addListener('keyboardWillShow', () => {
-      void nativeWarmAudioSession.prewarm().catch(() => undefined)
+    const subscription = Keyboard.addListener('keyboardDidHide', () => {
+      nativeWarmAudioSession.releaseIfIdle()
     })
     return () => subscription.remove()
   }, [])

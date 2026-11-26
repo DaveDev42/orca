@@ -1,6 +1,5 @@
 import {
   addExpoTwoWayAudioEventListener,
-  getMicrophonePermissionsAsync,
   initialize,
   requestMicrophonePermissionsAsync,
   speechFeed,
@@ -27,12 +26,11 @@ export const nativeMicrophoneScreenLock = createMicrophoneScreenLock(
   MICROPHONE_SCREEN_LOCK_TAG
 )
 
-// One warm engine for the page bridge and the native dictation host, so a prewarm from either serves both.
+// One warm engine for the page bridge and the native dictation host; it only comes up when a dictation opens it.
 export const nativeWarmAudioSession = createWarmAudioSession({
   initialize,
   toggleRecording,
   tearDown,
-  hasMicrophonePermission: async () => (await getMicrophonePermissionsAsync()).granted,
   onBackground: (handler) => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') {

@@ -25,7 +25,10 @@ import type { PendingNativeChatImage } from './attachments/mobile-native-chat-im
 import { mobileNativeChatComposerPasteHandler } from './attachments/mobile-native-chat-composer-paste'
 import { useMobileNativeChatComposerMenu } from './menus/use-mobile-native-chat-composer-menu'
 import { useMobileNativeChatMentionBots } from './menus/use-mobile-native-chat-mention-bots'
-import { prewarmMobileDictation } from '../../../dictation/mobile-dictation-prewarm'
+import {
+  prewarmMobileDictation,
+  releaseMobileDictationAudio
+} from '../../../dictation/mobile-dictation-prewarm'
 import { shownDictationPreview } from './menus/mobile-native-chat-bot-mention-display'
 import { mobileNativeChatComposerStyles as styles } from './field/mobile-native-chat-composer-styles'
 import { composerInputStyles as inputStyles } from '../../../components/composer-input/composer-input-styles'
@@ -289,13 +292,16 @@ export function MobileNativeChatComposer({
             }}
             onFocus={() => {
               setFocused(true)
-              // Focus is the earliest sign of a dictation; warm the microphone and recognizer status for it.
+              // Focus is the earliest sign of a dictation; warm the recognizer status only; audio stays off until a dictation starts.
               prewarmMobileDictation()
               if (draftScopeKey) {
                 focusMobileNativeChatTextDestination(draftScopeKey)
               }
             }}
-            onBlur={() => setFocused(false)}
+            onBlur={() => {
+              setFocused(false)
+              releaseMobileDictationAudio()
+            }}
             onWebPaste={onWebPaste}
             // Controlled only transiently right after an autocomplete insert.
             selection={menu.pendingSelection ?? undefined}
