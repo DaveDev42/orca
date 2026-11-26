@@ -1,11 +1,11 @@
-import type { SpikeTestDefinition } from './spike-test-helpers'
 import {
   hostOf,
   loadAndWait,
   proxySaw,
   verdict,
   waitPage,
-  type SpikeContext
+  type SpikeContext,
+  type SpikeTestDefinition
 } from './spike-test-helpers'
 
 export const runLocalhost: SpikeTestDefinition['run'] = async (context) => {

@@ -11,7 +11,8 @@ export function badgeStyle(status: SpikeStatus) {
       return styles.badgeFail
     case 'running':
       return styles.badgeRunning
-    default:
+    case 'idle':
+    case 'skip':
       return styles.badgeIdle
   }
 }

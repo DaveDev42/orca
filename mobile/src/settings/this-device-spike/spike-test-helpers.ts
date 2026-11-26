@@ -39,13 +39,17 @@ export function proxySaw(entries: readonly SpikeProxyEntry[], hostPort: string):
   )
 }
 
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
 export function parsePageMessage(event: SpikeEvent): PageMessage | null {
   if (event.kind !== 'page' || typeof event.json !== 'string') {
     return null
   }
   try {
     const parsed: unknown = JSON.parse(event.json)
-    return parsed && typeof parsed === 'object' ? (parsed as PageMessage) : null
+    return isRecord(parsed) ? parsed : null
   } catch {
     return null
   }

@@ -1,10 +1,11 @@
-import type { SpikeTestDefinition } from './spike-test-helpers'
 import {
+  isRecord,
   proxySaw,
   verdict,
   waitPage,
   type PageMessage,
-  type SpikeResult
+  type SpikeResult,
+  type SpikeTestDefinition
 } from './spike-test-helpers'
 
 export const runHls: SpikeTestDefinition['run'] = async (context) => {
@@ -27,8 +28,22 @@ export const runHls: SpikeTestDefinition['run'] = async (context) => {
 
 type Candidate = { type?: string; protocol?: string; address?: string }
 
+function readCandidates(value: unknown): Candidate[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value.flatMap((item: unknown): Candidate[] => {
+    if (!isRecord(item)) {
+      return []
+    }
+    return [
+      { type: String(item.type), protocol: String(item.protocol), address: String(item.address) }
+    ]
+  })
+}
+
 export function judgeWebRtc(message: PageMessage, blockExpected: boolean): SpikeResult {
-  const candidates = (Array.isArray(message.candidates) ? message.candidates : []) as Candidate[]
+  const candidates = readCandidates(message.candidates)
   const summary = candidates.map((c) => `${c.type}/${c.protocol}/${c.address}`).join(', ') || 'none'
   const ip = message.ipifyIp
     ? `proxied IP seen by ipify ${String(message.ipifyIp)}`
