@@ -742,5 +742,17 @@
     "text": "files.readDir refused",
     "dynamic": false,
     "count": 1
+  },
+  {
+    "filePath": "mobile/src/settings/this-device-spike/this-device-spike-screen.tsx",
+    "reason": "Throwaway developer spike behind a hidden screen; English only, never shipped to users."
+  },
+  {
+    "filePath": "mobile/src/settings/this-device-spike/this-device-spike-parts.tsx",
+    "reason": "Throwaway developer spike behind a hidden screen; English only, never shipped to users."
+  },
+  {
+    "filePath": "mobile/src/settings/this-device-spike/spike-tests.ts",
+    "reason": "Throwaway developer spike behind a hidden screen; English only, never shipped to users."
   }
 ]
