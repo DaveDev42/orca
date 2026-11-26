@@ -35,8 +35,8 @@ class AudioEngine {
     // session is active and the engine runs, on every start, warm or cold. The mic tap drops buffers until the cue has
     // finished so the tone never reaches the recognizer.
     private let cuePlayer = AVAudioPlayerNode()
-    private lazy var startCueBuffer = AudioEngine.makeCueBuffer(format: voiceIOFormat, frequency: 880, seconds: 0.15, gain: 0.5)
-    private lazy var stopCueBuffer = AudioEngine.makeCueBuffer(format: voiceIOFormat, frequency: 660, seconds: 0.08, gain: 0.25)
+    private lazy var startCueBuffer = AudioEngine.makeCueBuffer(format: voiceIOFormat, frequency: 880, seconds: 0.15, gain: 0.12)
+    private lazy var stopCueBuffer = AudioEngine.makeCueBuffer(format: voiceIOFormat, frequency: 660, seconds: 0.08, gain: 0.06)
     private var micMutedUntil: TimeInterval = 0
     private static let cueTailSeconds: TimeInterval = 0.08
 

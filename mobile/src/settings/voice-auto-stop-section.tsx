@@ -16,7 +16,7 @@ export function VoiceAutoStopSection({ first }: { first: boolean }) {
   useMobileColorScheme()
   const t = useForkTranslation()
   const [autoStop, setAutoStop] = useState(true)
-  const [autoSend, setAutoSend] = useState(true)
+  const [autoSend, setAutoSend] = useState(false)
   useEffect(() => {
     let active = true
     void Promise.all([loadDictationAutoStop(), loadDictationAutoSend()]).then(([stop, send]) => {
